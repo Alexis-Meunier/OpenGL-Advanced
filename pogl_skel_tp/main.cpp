@@ -14,7 +14,9 @@
 
 
 GLuint bunny_vao_id;
+GLuint bunny_vao_id_geometry;
 GLuint program_id;
+GLuint program_id_geometry;
 
 void window_resize(int width, int height) {
   //std::cout << "glViewport(0,0,"<< width << "," << height << ");TEST_OPENGL_ERROR();" << std::endl;
@@ -23,7 +25,13 @@ void window_resize(int width, int height) {
 
 void display() {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);TEST_OPENGL_ERROR();
+  glUseProgram(program_id);TEST_OPENGL_ERROR();
   glBindVertexArray(bunny_vao_id);TEST_OPENGL_ERROR();
+  glDrawArrays(GL_TRIANGLES, 0, vertex_buffer_data.size());TEST_OPENGL_ERROR();
+  glBindVertexArray(0);TEST_OPENGL_ERROR();
+
+  glUseProgram(program_id_geometry);TEST_OPENGL_ERROR();
+  glBindVertexArray(bunny_vao_id_geometry);TEST_OPENGL_ERROR();
   glDrawArrays(GL_TRIANGLES, 0, vertex_buffer_data.size());TEST_OPENGL_ERROR();
   glBindVertexArray(0);TEST_OPENGL_ERROR();
   glutSwapBuffers();
@@ -58,17 +66,17 @@ void init_GL() {
 }
 
 
-void init_object_vbo() {
+void init_object_vbo(GLuint prog_id, GLuint& bunny_id) {
   int max_nb_vbo = 5;
   int nb_vbo = 0;
   int index_vbo = 0;
   GLuint vbo_ids[max_nb_vbo];
 
-  GLint vertex_location = glGetAttribLocation(program_id,"position");TEST_OPENGL_ERROR();
-  GLint normal_smooth_location = glGetAttribLocation(program_id,"normalSmooth");TEST_OPENGL_ERROR();
+  GLint vertex_location = glGetAttribLocation(prog_id,"position");TEST_OPENGL_ERROR();
+  GLint normal_smooth_location = glGetAttribLocation(prog_id,"normalSmooth");TEST_OPENGL_ERROR();
 
-  glGenVertexArrays(1, &bunny_vao_id);TEST_OPENGL_ERROR();
-  glBindVertexArray(bunny_vao_id);TEST_OPENGL_ERROR();
+  glGenVertexArrays(1, &bunny_id);TEST_OPENGL_ERROR();
+  glBindVertexArray(bunny_id);TEST_OPENGL_ERROR();
 
   if (vertex_location!=-1) nb_vbo++;
   if (normal_smooth_location!=-1) nb_vbo++;
@@ -111,25 +119,35 @@ std::string load(const std::string &filename) {
 bool init_shaders() {
   std::string vertex_src = load("vertex.shd");
   std::string fragment_src = load("fragment.shd");
+  std::string vertex_geometry_src = load("vertex_geometry.shd");
   std::string geometry_src = load("geometry.shd");
-  GLuint shader_id[3];
+  std::string fragment_geometry_src = load("fragment_geometry.shd");
+  GLuint shader_id[5];
   GLint compile_status = GL_TRUE;
   char *vertex_shd_src = (char*)std::malloc(vertex_src.length()*sizeof(char));
   char *fragment_shd_src = (char*)std::malloc(fragment_src.length()*sizeof(char));
+  char *vertex_geometry_shd_src = (char*)std::malloc(vertex_geometry_src.length()*sizeof(char));
   char *geometry_shd_src = (char*)std::malloc(geometry_src.length()*sizeof(char));
+  char *fragment_geometry_shd_src = (char*)std::malloc(fragment_geometry_src.length()*sizeof(char));
   vertex_src.copy(vertex_shd_src,vertex_src.length());
   fragment_src.copy(fragment_shd_src,fragment_src.length());
+  vertex_geometry_src.copy(vertex_geometry_shd_src,vertex_geometry_src.length());
   geometry_src.copy(geometry_shd_src,geometry_src.length());
+  fragment_geometry_src.copy(fragment_geometry_shd_src,fragment_geometry_src.length());
 
 
   shader_id[0] = glCreateShader(GL_VERTEX_SHADER);TEST_OPENGL_ERROR();
   shader_id[1] = glCreateShader(GL_FRAGMENT_SHADER);TEST_OPENGL_ERROR();
-  shader_id[2] = glCreateShader(GL_GEOMETRY_SHADER);TEST_OPENGL_ERROR();
+  shader_id[2] = glCreateShader(GL_VERTEX_SHADER);TEST_OPENGL_ERROR();
+  shader_id[3] = glCreateShader(GL_GEOMETRY_SHADER);TEST_OPENGL_ERROR();
+  shader_id[4] = glCreateShader(GL_FRAGMENT_SHADER);TEST_OPENGL_ERROR();
 
   glShaderSource(shader_id[0], 1, (const GLchar**)&(vertex_shd_src), 0);TEST_OPENGL_ERROR();
   glShaderSource(shader_id[1], 1, (const GLchar**)&(fragment_shd_src), 0);TEST_OPENGL_ERROR();
-  glShaderSource(shader_id[2], 1, (const GLchar**)&(geometry_shd_src), 0);TEST_OPENGL_ERROR();
-  for(int i = 0 ; i < 3 ; i++) {
+  glShaderSource(shader_id[2], 1, (const GLchar**)&(vertex_geometry_shd_src), 0);TEST_OPENGL_ERROR();
+  glShaderSource(shader_id[3], 1, (const GLchar**)&(geometry_shd_src), 0);TEST_OPENGL_ERROR();
+  glShaderSource(shader_id[4], 1, (const GLchar**)&(fragment_geometry_shd_src), 0);TEST_OPENGL_ERROR();
+  for(int i = 0 ; i < 5 ; i++) {
     glCompileShader(shader_id[i]);TEST_OPENGL_ERROR();
     glGetShaderiv(shader_id[i], GL_COMPILE_STATUS, &compile_status);
     if(compile_status != GL_TRUE) {
@@ -147,6 +165,8 @@ bool init_shaders() {
       glDeleteShader(shader_id[0]);
       glDeleteShader(shader_id[1]);
       glDeleteShader(shader_id[2]);
+      glDeleteShader(shader_id[3]);
+      glDeleteShader(shader_id[4]);
       return false;
     }
   }
@@ -157,7 +177,7 @@ bool init_shaders() {
   GLint link_status=GL_TRUE;
   program_id=glCreateProgram();TEST_OPENGL_ERROR();
   if (program_id==0) return false;
-  for(int i = 0 ; i < 3 ; i++) {
+  for(int i = 0 ; i < 2 ; i++) {
     glAttachShader(program_id, shader_id[i]);TEST_OPENGL_ERROR();
   }
   glLinkProgram(program_id);TEST_OPENGL_ERROR();
@@ -176,7 +196,37 @@ bool init_shaders() {
     glDeleteShader(shader_id[0]);TEST_OPENGL_ERROR();
     glDeleteShader(shader_id[1]);TEST_OPENGL_ERROR();
     glDeleteShader(shader_id[2]);TEST_OPENGL_ERROR();
+    glDeleteShader(shader_id[3]);TEST_OPENGL_ERROR();
+    glDeleteShader(shader_id[4]);TEST_OPENGL_ERROR();
     program_id=0;
+    return false;
+  }
+
+  link_status=GL_TRUE;
+  program_id_geometry=glCreateProgram();TEST_OPENGL_ERROR();
+  if (program_id_geometry==0) return false;
+  for(int i = 2 ; i < 5 ; i++) {
+      glAttachShader(program_id_geometry, shader_id[i]);TEST_OPENGL_ERROR();
+  }
+  glLinkProgram(program_id_geometry);TEST_OPENGL_ERROR();
+  glGetProgramiv(program_id_geometry, GL_LINK_STATUS, &link_status);
+  if (link_status!=GL_TRUE) {
+    GLint log_size;
+    char *program_log;
+    glGetProgramiv(program_id_geometry, GL_INFO_LOG_LENGTH, &log_size);
+    program_log = (char*)std::malloc(log_size+1); /* +1 pour le caractere de fin de chaine '\0' */
+    if(program_log != 0) {
+      glGetProgramInfoLog(program_id_geometry, log_size, &log_size, program_log);
+      std::cerr << "Program " << program_log << std::endl;
+      std::free(program_log);
+    }
+    glDeleteProgram(program_id_geometry);TEST_OPENGL_ERROR();
+    glDeleteShader(shader_id[0]);TEST_OPENGL_ERROR();
+    glDeleteShader(shader_id[1]);TEST_OPENGL_ERROR();
+    glDeleteShader(shader_id[2]);TEST_OPENGL_ERROR();
+    glDeleteShader(shader_id[3]);TEST_OPENGL_ERROR();
+    glDeleteShader(shader_id[4]);TEST_OPENGL_ERROR();
+    program_id_geometry=0;
     return false;
   }
   glUseProgram(program_id);TEST_OPENGL_ERROR();
@@ -190,6 +240,7 @@ int main(int argc, char *argv[]) {
     std::exit(-1);
   init_GL();
   init_shaders();
-  init_object_vbo();
+  init_object_vbo(program_id, bunny_vao_id);
+  init_object_vbo(program_id_geometry, bunny_vao_id_geometry);
   glutMainLoop();
 }
