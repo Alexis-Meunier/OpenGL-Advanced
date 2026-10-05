@@ -22,7 +22,7 @@ CXX_FLAGS += -fopt-info-vec-optimized #-fopt-info-vec-missed -ftree-vectorize
 LDXX_FLAGS = -lGL  -lGLEW -lglut -lpthread
 #LDXX_FLAGS += /home/jonathan/work/enseignement/matieres/synthese/prog/opengl/compute_shader/jf_gl_tools/dist_lib/libjfglt.a
 
-MAIN_FILE = main.cpp
+MAIN_FILE = main.cpp matrix.cc
 DIST = main
 
 SKEL_DIST_DIR = pogl_skel_tp
