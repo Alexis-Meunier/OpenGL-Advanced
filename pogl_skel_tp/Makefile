@@ -9,7 +9,7 @@
 CC = g++
 
 CPP_FILES =
-CPP_FILES +=
+CPP_FILES += main.cpp matrix.cpp
 HXX_FILES = bunny.hh
 HXX_FILES +=
 OBJ_FILES = $(CPP_FILES:.cpp=.o)
@@ -26,7 +26,8 @@ MAIN_FILE = main.cpp matrix.cc
 DIST = main
 
 SKEL_DIST_DIR = pogl_skel_tp
-SKEL_FILES = $(CPP_FILES) $(HXX_FILES) $(MAIN_FILE) Makefile vertex.shd fragment.shd
+SKEL_FILES = $(CPP_FILES) $(HXX_FILES) $(MAIN_FILE) Makefile
+SKEL_SHADER_FOLDER = base_bunny normal_bunny
 
 
 #For gcc 4.9
@@ -98,5 +99,6 @@ skel:
 	rm -rf $(SKEL_DIST_DIR)
 	mkdir $(SKEL_DIST_DIR)
 	cp $(SKEL_FILES) $(SKEL_DIST_DIR)
+	cp -r $(SKEL_SHADER_FOLDER) $(SKEL_DIST_DIR)
 	tar -cjvf $(SKEL_DIST_DIR).tar.bz2 $(SKEL_DIST_DIR)
 	rm -rf $(SKEL_DIST_DIR)
