@@ -31,6 +31,7 @@ float vertAngl = 0.0f;
 const float CAM_SPEED = 1.0f;
 const float MOUSE_SENS = 0.2f;
 float normal_length = 0.05f;
+GLfloat anim_time = 0.0f;
 
 bool mouseWarped = false;
 
@@ -185,7 +186,7 @@ void display() {
 
   glUseProgram(program_id);TEST_OPENGL_ERROR();
   glBindVertexArray(bunny_vao_id);TEST_OPENGL_ERROR();
-  glDrawArrays(GL_PATCHES, 0, vertex_buffer_data.size());TEST_OPENGL_ERROR();
+  glDrawArrays(GL_PATCHES, 0, 4);TEST_OPENGL_ERROR();
   // glDrawArrays(GL_TRIANGLES, 0, vertex_buffer_data.size());TEST_OPENGL_ERROR();
   glBindVertexArray(0);TEST_OPENGL_ERROR();
 
@@ -226,6 +227,7 @@ void init_GL() {
   glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);TEST_OPENGL_ERROR();
   glEnable(GL_CULL_FACE);TEST_OPENGL_ERROR();
   glClearColor(0.4,0.4,0.4,1.0);TEST_OPENGL_ERROR();
+  glPatchParameteri(GL_PATCH_VERTICES, 4);
 }
 
 
@@ -295,6 +297,12 @@ bool init_POV(GLuint prog_id) {
       {0.00000, 0.00000, -17, 1.00000}
     }
   );
+
+  // matrix4 test_camera = look_at(
+  //   -1.0, 0.5, 0.0,
+  //   0.0, 0.0, 0.0,
+  //   0.0, 1.0, 0.0
+  // );
 
   matrix4 plane_proj_mat(
     {
@@ -455,6 +463,25 @@ bool init_shaders() {
   return true;
 }
 
+void anim() {
+  GLint anim_time_location;
+  //glUseProgram(program_id);
+  anim_time_location =
+  glGetUniformLocation(program_id, "anim_time");
+  glUniform1f(anim_time_location, anim_time);
+  anim_time += 0.1;
+  // testez une borne max.
+  glutPostRedisplay();
+}
+
+void timer(int value) {
+  anim();
+  glutTimerFunc(33,timer,0);
+}
+
+void init_anim() {
+  glutTimerFunc(33,timer,0);
+}
 
 int main(int argc, char *argv[]) {
   init_glut(argc, argv);
@@ -466,5 +493,6 @@ int main(int argc, char *argv[]) {
   // init_object_vbo(program_id_geometry, bunny_vao_id_geometry);
   init_POV(program_id);
   // init_POV(program_id_geometry);
+  init_anim();
   glutMainLoop();
 }
