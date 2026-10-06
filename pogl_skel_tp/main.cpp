@@ -4,6 +4,7 @@
 #include <fstream>
 #include <vector>
 #include <cmath>
+#include <cstring>
 
 #include "bunny.hh"
 #include "matrix.hh"
@@ -17,166 +18,88 @@
     if (err != GL_NO_ERROR) std::cerr << "OpenGL ERROR! " << __LINE__ << std::endl;      \
   } while(0)
 
-
-bool locked = true;
-
-// 			      0.57735, -0.33333, 0.57735, 0.00000,
-// 			      0.00000, 0.66667, 0.57735, 0.00000,
-// 			      -0.57735, -0.33333, 0.57735, 0.00000,
-// 			      0.00000, 0.00000, -17, 1.00000);
-float camX = 15.0f, camY = 15.0f, camZ = -1.00020f;
-float lightX = -10.0f, lightY = -10.0f, lightZ = -50.0f;
-float horizAngl = 90.0f;
-float vertAngl = 0.0f;
-const float CAM_SPEED = 1.0f;
-const float MOUSE_SENS = 0.2f;
-float normal_length = 0.05f;
 GLfloat anim_time = 0.0f;
-
-bool mouseWarped = false;
-
-int lastMouseX = WINDOW_HORIZ_MID;
-int lastMouseY = WINDOW_VERT_MID;
 
 GLuint bunny_vao_id;
 GLuint bunny_vao_id_geometry;
 GLuint program_id;
 GLuint program_id_geometry;
 
-// void handleMouseLook(int x, int y) {
-//     const int CX = WINDOW_HORIZ_MID;
-//     const int CY = WINDOW_VERT_MID;
+float camYaw = 0.6f;
+float camPitch = 0.5f;
+float camDist = 2.5f;
+float aspect = 1.0f;
+bool dragging = false;
+int lastX = 0, lastY = 0;
 
-//     if (mouseWarped) {
-//         mouseWarped = false;
-//         return;
-//     }
+static void upload_mat4(GLuint prog, const char* name, matrix4& m) {
+  GLfloat* v = m.get_values();
+  glUniformMatrix4fv(glGetUniformLocation(prog, name), 1, GL_TRUE, v);
+  delete[] v;
+}
 
-//     float dx = (x - CX) * MOUSE_SENS;
-//     // We flip on y because the coordinates are inversed ?
-//     float dy = (CY - y) * MOUSE_SENS;
+void update_projection() {
+  if (!program_id) return;
+  const float n = 0.05f, f = 100.0f;
+  const float fovy = 60.0f * M_PI / 180.0f;
+  const float top = n * std::tan(fovy / 2.0f);
+  const float right = top * aspect;
 
-//     horizAngl += dx;
-//     vertAngl += dy;
-//     // Clamp so we can't loop
-//     if (vertAngl >  89.0f) vertAngl =  89.0f;
-//     if (vertAngl < -89.0f) vertAngl = -89.0f;
+  matrix4 proj = frustum(-right, right, -top, top, n, f);
 
-//     mouseWarped = true;
-//     glutWarpPointer(CX, CY);
+  glUseProgram(program_id);
+  upload_mat4(program_id, "projection", proj);
+}
 
-//     glutPostRedisplay();
-// }
+void update_camera() {
+  if (!program_id) return;
 
-// void get_camera_dirs(float& fx, float& fy, float& fz,
-//                      float& rx, float& ry, float& rz)
-// {
-//     // get Angle as radians
-//     float radhorizAngl = horizAngl * M_PI / 180.0f;
-//     float radvertAngl = vertAngl * M_PI / 180.0f;
+  float ex = camDist * std::cos(camPitch) * std::sin(camYaw);
+  float ey = camDist * std::sin(camPitch);
+  float ez = camDist * std::cos(camPitch) * std::cos(camYaw);
 
-//     // Forward vector
-//     fx = std::cos(radvertAngl) * std::cos(radhorizAngl);
-//     fy = std::sin(radvertAngl);
-//     fz = std::cos(radvertAngl) * std::sin(radhorizAngl);
+  matrix4 view = look_at(ex, ey, ez,
+                         0.0f, 0.0f, 0.0f,
+                         0.0f, 1.0f, 0.0f);
 
-//     float len = std::sqrt(fz*fz + fx*fx);
-//     rx =  fz / len;
-//     ry =  0.0f;
-//     rz = -fx / len;
-// }
+  glUseProgram(program_id);
+  upload_mat4(program_id, "camera", view);
+  glUniform3f(glGetUniformLocation(program_id, "cameraPos"), ex, ey, ez);
+}
 
-// void handleKeyboard(unsigned char key, int x, int y) {
-//     float fx, fy, fz, rx, ry, rz;
-//     get_camera_dirs(fx, fy, fz, rx, ry, rz);
-//     GLint normal_length_pos;
+void on_mouse(int button, int state, int x, int y) {
+  if (button == GLUT_LEFT_BUTTON) {
+    dragging = (state == GLUT_DOWN);
+    lastX = x; lastY = y;
+  }
+}
 
-//     switch (key) {
-//       // Z-Axis movement
-//         case 'w': camX += fx * CAM_SPEED; camY += fy * CAM_SPEED; camZ += fz * CAM_SPEED; break;
-//         case 's': camX -= fx * CAM_SPEED; camY -= fy * CAM_SPEED; camZ -= fz * CAM_SPEED; break;
-//       // X-Axis movement
-//         case 'd': camX -= rx * CAM_SPEED; camY -= ry * CAM_SPEED; camZ -= rz * CAM_SPEED; break;
-//         case 'a': camX += rx * CAM_SPEED; camY += ry * CAM_SPEED; camZ += rz * CAM_SPEED; break;
-//       // Y-Axis movement
-//         case 'q': camY += CAM_SPEED; break;
-//         case 'e': camY -= CAM_SPEED; break;
-//         case 'u': lightX += fx * CAM_SPEED; lightY += fy * CAM_SPEED; lightZ += fz * CAM_SPEED; break;
-//         case 'j': lightX -= fx * CAM_SPEED; lightY -= fy * CAM_SPEED; lightZ -= fz * CAM_SPEED; break;
-//         case 'h': lightX -= rx * CAM_SPEED; lightY -= ry * CAM_SPEED; lightZ -= rz * CAM_SPEED; break;
-//         case 'k': lightX += rx * CAM_SPEED; lightY += ry * CAM_SPEED; lightZ += rz * CAM_SPEED; break;
-//         case 'y': lightY += CAM_SPEED; break;
-//         case 'i': lightY -= CAM_SPEED; break;
-//       // lock cursor when `space`
-//         case ' ':
-//           locked = !locked;
-//           if (locked) {
-//               glutSetCursor(GLUT_CURSOR_NONE);
-//               glutPassiveMotionFunc(handleMouseLook);
-//               glutWarpPointer(512, 512);
-//           } else {
-//               glutSetCursor(GLUT_CURSOR_INHERIT);
-//               glutPassiveMotionFunc(nullptr);
-//           }
-//           break;
-//         // case 13:
-//         //   camX = 0.0f, camY = 0.0f, camZ = -50.0f;
-//         //   horizAngl = 90.0f;
-//         //   vertAngl = 0.0f;
-//         //   break;
-//         case '+':
-//             normal_length += 0.01;
-//             // glUseProgram(program_id_geometry);
-//             // normal_length_pos = glGetUniformLocation(program_id_geometry, "normal_length");TEST_OPENGL_ERROR();
-//             // glUniform1f(normal_length_pos, normal_length);
-//             break;
-//         case '-':
-//             if (normal_length - 0.01 > 0)
-//               normal_length -= 0.01;
-//             // glUseProgram(program_id_geometry);
-//             // normal_length_pos = glGetUniformLocation(program_id_geometry, "normal_length");TEST_OPENGL_ERROR();
-//             // glUniform1f(normal_length_pos, normal_length);
-//             break;
-//       // if `escape` then close window
-//         case 27: exit(0);
-//     }
+void on_motion(int x, int y) {
+  if (!dragging) return;
 
-//     glutPostRedisplay();
-// }
+  camYaw   -= (x - lastX) * 0.005f;
+  camPitch += (y - lastY) * 0.005f;
+  if (camPitch >  1.5f)  camPitch =  1.5f;
+  if (camPitch < 0.05f)  camPitch = 0.05f;
+  lastX = x; lastY = y;
 
-// void update_light() {
-//     glUseProgram(program_id);TEST_OPENGL_ERROR();
-//     GLint light_pos_location = glGetUniformLocation(program_id, "light_pos");
-//     glUniform3f(light_pos_location, lightX, lightY, lightZ);
-    
-//     // glUseProgram(program_id_geometry);TEST_OPENGL_ERROR();
-//     // light_pos_location = glGetUniformLocation(program_id_geometry, "light_pos");
-//     // glUniform3f(light_pos_location, lightX, lightY, lightZ);
-// }
+  update_camera();
+  glutPostRedisplay();
+}
 
-// void update_camera() {
-//     float fx, fy, fz, rx, ry, rz;
-//     get_camera_dirs(fx, fy, fz, rx, ry, rz);
-
-//     auto camera_mat = look_at(
-//         camX, camY, camZ,
-//         camX + fx, camY + fy, camZ + fz,
-//         0.0f, 1.0f, 0.0f
-//     );
-
-//     glUseProgram(program_id);TEST_OPENGL_ERROR();
-//     GLint camera_location = glGetUniformLocation(program_id, "camera");
-//     glUniformMatrix4fv(camera_location, 1, GL_FALSE, camera_mat.get_values());
-    
-//     // glUseProgram(program_id_geometry);TEST_OPENGL_ERROR();
-//     // camera_location = glGetUniformLocation(program_id_geometry, "camera");
-//     // glUniformMatrix4fv(camera_location, 1, GL_FALSE, camera_mat.get_values());
-// }
-
+void on_wheel(int wheel, int dir, int x, int y) {
+  camDist -= dir * 0.2f;
+  if (camDist < 0.5f)  camDist = 0.5f;
+  if (camDist > 20.0f) camDist = 20.0f;
+  update_camera();
+  glutPostRedisplay();
+}
 
 void window_resize(int width, int height) {
   //std::cout << "glViewport(0,0,"<< width << "," << height << ");TEST_OPENGL_ERROR();" << std::endl;
-  glViewport(0,0,width,height);TEST_OPENGL_ERROR();
+  glViewport(0, 0, width, height);TEST_OPENGL_ERROR();
+  aspect = (height > 0) ? (float)width / (float)height : 1.0f;
+  update_projection();
 }
 
 void display() {
@@ -208,8 +131,9 @@ void init_glut(int &argc, char *argv[]) {
   glutCreateWindow("Shader Programming");
 
   glutDisplayFunc(display);
-  // glutPassiveMotionFunc(handleMouseLook);
-  // glutKeyboardFunc(handleKeyboard);
+  glutMouseFunc(on_mouse);
+  glutMotionFunc(on_motion);
+  glutMouseWheelFunc(on_wheel);
 
   glutReshapeFunc(window_resize);
 }
@@ -283,53 +207,16 @@ std::string load(const std::string &filename) {
 
 bool init_POV(GLuint prog_id) {
   glUseProgram(prog_id);TEST_OPENGL_ERROR();
-  GLint camera_location = glGetUniformLocation(prog_id, "camera");TEST_OPENGL_ERROR();
-  GLint proj_location = glGetUniformLocation(prog_id, "projection");TEST_OPENGL_ERROR();
-  GLint light_pos_location = glGetUniformLocation(prog_id, "light_pos");TEST_OPENGL_ERROR();
-  GLint light_color_location = glGetUniformLocation(prog_id, "light_color");TEST_OPENGL_ERROR();
-  // GLint normal_length_location = glGetUniformLocation(prog_id, "normal_length");TEST_OPENGL_ERROR();
+  GLint light_pos_location   = glGetUniformLocation(prog_id, "light_pos");
+  GLint light_color_location = glGetUniformLocation(prog_id, "light_color");
 
-  matrix4 bunny_camera_mat(
-    {
-      {0.57735, -0.33333, 0.57735, 0.00000},
-      {0.00000, 0.66667, 0.57735, 0.00000},
-      {-0.57735, -0.33333, 0.57735, 0.00000},
-      {0.00000, 0.00000, -17, 1.00000}
-    }
-  );
+  glUniform3f(light_pos_location, 2.0f, 3.0f, 2.0f);   // ABOVE the plane now
+  glUniform3f(light_color_location, 1.0f, 1.0f, 1.0f);
 
-  // matrix4 test_camera = look_at(
-  //   -1.0, 0.5, 0.0,
-  //   0.0, 0.0, 0.0,
-  //   0.0, 1.0, 0.0
-  // );
-
-  matrix4 plane_proj_mat(
-    {
-      {250.00000, 0.00000, 0.00000, 0.00000},
-      {0.00000, 250.00000, 0.00000, 0.00000},
-      {0.00000, 0.00000, -1.02020, -10.10101},
-      {0.00000, 0.00000, -1.00000, 0.00000}
-    }
-  );
-
-  // matrix4 proj_mat(
-  //   {
-  //     {15.00000, 0.00000, 0.00000, 0.00000},
-  //     {0.00000, 15.00000, 0.00000, 0.00000},
-  //     {0.00000, 0.00000, -1.00020, -1.00000},
-  //     {0.00000, 0.00000, -10.00100, 0.00000}
-  //   }
-  // );
-
-  glUniformMatrix4fv(camera_location, 1, GL_FALSE, bunny_camera_mat.get_values());TEST_OPENGL_ERROR();
-  glUniformMatrix4fv(proj_location, 1, GL_FALSE, plane_proj_mat.get_values());TEST_OPENGL_ERROR();
-  glUniform3f(light_pos_location, -10.0, -10.0, -50.0);TEST_OPENGL_ERROR();
-  glUniform3f(light_color_location, 1.0, 1.0, 1.0);TEST_OPENGL_ERROR();
-  // glUniform1f(normal_length_location, 0.05f);TEST_OPENGL_ERROR();
+  update_projection();
+  update_camera();
   return true;
 }
-
 
 bool init_shaders() {
   std::string vertex_src = load("base_bunny/vertex.shd");

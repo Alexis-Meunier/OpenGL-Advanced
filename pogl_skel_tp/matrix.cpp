@@ -136,7 +136,7 @@ matrix4 frustum(const GLfloat& left, const GLfloat &right, const GLfloat& bottom
 GLfloat *matrix4::get_values()
 {
     int index = 0;
-    GLfloat *vals = new GLfloat[16 * sizeof(GLfloat)];
+    GLfloat *vals = new GLfloat[16];
     for(const auto& arr : values)
     {
         for (const auto val : arr)
