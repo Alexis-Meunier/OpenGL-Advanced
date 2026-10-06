@@ -7,6 +7,8 @@ in vec3 vs_normal[];
 out vec3 tsc_color[];
 out vec3 tsc_normals[];
 
+uniform int nb_divisions;
+
 void main() {
     gl_TessLevelOuter[0] = 15;
     gl_TessLevelOuter[1] = 25;

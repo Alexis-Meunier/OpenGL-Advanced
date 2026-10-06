@@ -1,5 +1,7 @@
 #version 450
 
+#define NOISE_FACTOR 3.0
+
 layout( quads, equal_spacing, ccw ) in;
 
 uniform mat4 camera;
@@ -124,5 +126,5 @@ float smooth_snoise(in vec2 v){
   vec3 g;
   g.x = a0.x * x0.x + h.x * x0.y;
   g.yz = a0.yz * x12.xz + h.yz * x12.yw;
-  return dot(m, g);
+  return NOISE_FACTOR * dot(m, g);
 }

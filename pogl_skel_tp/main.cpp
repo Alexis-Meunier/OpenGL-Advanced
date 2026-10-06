@@ -31,6 +31,40 @@ float camDist = 2.5f;
 float aspect = 1.0f;
 bool dragging = false;
 int lastX = 0, lastY = 0;
+float lightX = 0.0, lightY = 10.0, lightZ = 0.0;
+
+GLuint nbDivisions = 10;
+
+void handleKeyboard(unsigned char key, int x, int y) {
+    GLint div_location;
+
+    switch (key)
+    {
+        case 's': lightX += 0.2; lightY += 0.0; lightZ += 0.0; break;
+        case 'w': lightX -= 0.2; lightY -= 0.0; lightZ -= 0.0; break;
+        case 'd': lightX -= 0.0; lightY -= 0.0; lightZ -= 0.2; break;
+        case 'a': lightX += 0.0; lightY += 0.0; lightZ += 0.2; break;
+        case 'q': lightY += 0.2; break;
+        case 'e': lightY -= 0.2; break;
+        case '+':
+            nbDivisions += 1;
+            div_location = glGetUniformLocation(program_id, "nb_divisions");
+            glUniform1f(div_location, nbDivisions);
+            break;
+        case '-':
+            if (nbDivisions > 0)
+              nbDivisions -= 1;
+            div_location = glGetUniformLocation(program_id, "nb_divisions");
+            glUniform1f(div_location, nbDivisions);
+            break;
+      // if `escape` then close window
+        case 27: exit(0);
+    }
+
+    GLint light_location = glGetUniformLocation(program_id, "light_pos");
+    glUniform3f(light_location, lightX, lightY, lightZ);
+    glutPostRedisplay();
+}
 
 static void upload_mat4(GLuint prog, const char* name, matrix4& m) {
   GLfloat* v = m.get_values();
@@ -134,6 +168,7 @@ void init_glut(int &argc, char *argv[]) {
   glutMouseFunc(on_mouse);
   glutMotionFunc(on_motion);
   glutMouseWheelFunc(on_wheel);
+  glutKeyboardFunc(handleKeyboard);
 
   glutReshapeFunc(window_resize);
 }
@@ -210,7 +245,7 @@ bool init_POV(GLuint prog_id) {
   GLint light_pos_location   = glGetUniformLocation(prog_id, "light_pos");
   GLint light_color_location = glGetUniformLocation(prog_id, "light_color");
 
-  glUniform3f(light_pos_location, 2.0f, 3.0f, 2.0f);   // ABOVE the plane now
+  glUniform3f(light_pos_location, lightX, lightY, lightZ);   // ABOVE the plane now
   glUniform3f(light_color_location, 1.0f, 1.0f, 1.0f);
 
   update_projection();
