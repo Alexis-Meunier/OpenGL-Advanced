@@ -7,16 +7,18 @@ in vec3 vs_normal[];
 out vec3 tsc_color[];
 out vec3 tsc_normals[];
 
-uniform int nb_divisions;
+uniform float nb_divisions;
+uniform float middle_divisions1;
+uniform float middle_divisions2;
 
 void main() {
-    gl_TessLevelOuter[0] = 15;
-    gl_TessLevelOuter[1] = 25;
-    gl_TessLevelOuter[2] = 35;
-    gl_TessLevelOuter[3] = 20;
+    gl_TessLevelOuter[0] = nb_divisions;
+    gl_TessLevelOuter[1] = nb_divisions;
+    gl_TessLevelOuter[2] = nb_divisions;
+    gl_TessLevelOuter[3] = nb_divisions;
 
-    gl_TessLevelInner[0] = 5;
-    gl_TessLevelInner[1] = 10;
+    gl_TessLevelInner[0] = middle_divisions1;
+    gl_TessLevelInner[1] = middle_divisions2;
 
     gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
     tsc_color[gl_InvocationID] = vs_color[gl_InvocationID];

@@ -31,9 +31,11 @@ float camDist = 2.5f;
 float aspect = 1.0f;
 bool dragging = false;
 int lastX = 0, lastY = 0;
-float lightX = 0.0, lightY = 10.0, lightZ = 0.0;
+float lightX = 0.0, lightY = 5.0, lightZ = 0.0;
 
 GLuint nbDivisions = 10;
+GLuint middleDivisions1 = 5;
+GLuint middleDivisions2 = 10;
 
 void handleKeyboard(unsigned char key, int x, int y) {
     GLint div_location;
@@ -56,6 +58,28 @@ void handleKeyboard(unsigned char key, int x, int y) {
               nbDivisions -= 1;
             div_location = glGetUniformLocation(program_id, "nb_divisions");
             glUniform1f(div_location, nbDivisions);
+            break;
+        case '7':
+            middleDivisions1 += 1;
+            div_location = glGetUniformLocation(program_id, "middle_divisions1");
+            glUniform1f(div_location, middleDivisions1);
+            break;
+        case '8':
+            if (middleDivisions1 > 0)
+              middleDivisions1 -= 1;
+            div_location = glGetUniformLocation(program_id, "middle_divisions1");
+            glUniform1f(div_location, middleDivisions1);
+            break;
+        case '4':
+            middleDivisions2 += 1;
+            div_location = glGetUniformLocation(program_id, "middle_divisions2");
+            glUniform1f(div_location, middleDivisions2);
+            break;
+        case '5':
+            if (middleDivisions2 > 0)
+              middleDivisions2 -= 1;
+            div_location = glGetUniformLocation(program_id, "middle_divisions2");
+            glUniform1f(div_location, middleDivisions2);
             break;
       // if `escape` then close window
         case 27: exit(0);
@@ -247,6 +271,15 @@ bool init_POV(GLuint prog_id) {
 
   glUniform3f(light_pos_location, lightX, lightY, lightZ);   // ABOVE the plane now
   glUniform3f(light_color_location, 1.0f, 1.0f, 1.0f);
+
+  GLint div_location = glGetUniformLocation(program_id, "nb_divisions");
+  glUniform1f(div_location, nbDivisions);
+
+  GLint mid_div_location1 = glGetUniformLocation(program_id, "middle_divisions1");
+  glUniform1f(mid_div_location1, middleDivisions1);
+
+  GLint mid_div_location2 = glGetUniformLocation(program_id, "middle_divisions2");
+  glUniform1f(mid_div_location2, middleDivisions2);
 
   update_projection();
   update_camera();
