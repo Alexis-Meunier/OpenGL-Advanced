@@ -15,8 +15,11 @@
 #define TEST_OPENGL_ERROR()                                                             \
   do {		  							\
     GLenum err = glGetError(); 					                        \
-    if (err != GL_NO_ERROR) std::cerr << "OpenGL ERROR! " << __LINE__ << std::endl;      \
+    if (err != GL_NO_ERROR) std::cerr << "OpenGL ERROR! " << __LINE__ << " Error code: " << err << std::endl;      \
   } while(0)
+
+const GLuint WIDTH = 1024;
+const GLuint HEIGHT = 1024;
 
 GLfloat anim_time = 0.0f;
 
@@ -24,6 +27,9 @@ GLuint bunny_vao_id;
 GLuint bunny_vao_id_geometry;
 GLuint program_id;
 GLuint program_id_geometry;
+GLuint frame_buffer_id;
+GLuint fbo_texture;
+GLuint fbo_depth;
 
 float camYaw = 0.6f;
 float camPitch = 0.5f;
@@ -50,49 +56,49 @@ void handleKeyboard(unsigned char key, int x, int y) {
         case 'e': lightY -= 0.2; break;
         case '+':
             nbDivisions += 1;
-            div_location = glGetUniformLocation(program_id, "nb_divisions");
-            glUniform1f(div_location, nbDivisions);
+            div_location = glGetUniformLocation(program_id, "nb_divisions");TEST_OPENGL_ERROR();
+            glUniform1f(div_location, nbDivisions);TEST_OPENGL_ERROR();
             break;
         case '-':
             if (nbDivisions > 0)
               nbDivisions -= 1;
-            div_location = glGetUniformLocation(program_id, "nb_divisions");
-            glUniform1f(div_location, nbDivisions);
+            div_location = glGetUniformLocation(program_id, "nb_divisions");TEST_OPENGL_ERROR();
+            glUniform1f(div_location, nbDivisions);TEST_OPENGL_ERROR();
             break;
         case '7':
             middleDivisions1 += 1;
-            div_location = glGetUniformLocation(program_id, "middle_divisions1");
-            glUniform1f(div_location, middleDivisions1);
+            div_location = glGetUniformLocation(program_id, "middle_divisions1");TEST_OPENGL_ERROR();
+            glUniform1f(div_location, middleDivisions1);TEST_OPENGL_ERROR();
             break;
         case '8':
             if (middleDivisions1 > 0)
               middleDivisions1 -= 1;
-            div_location = glGetUniformLocation(program_id, "middle_divisions1");
-            glUniform1f(div_location, middleDivisions1);
+            div_location = glGetUniformLocation(program_id, "middle_divisions1");TEST_OPENGL_ERROR();
+            glUniform1f(div_location, middleDivisions1);TEST_OPENGL_ERROR();
             break;
         case '4':
             middleDivisions2 += 1;
-            div_location = glGetUniformLocation(program_id, "middle_divisions2");
-            glUniform1f(div_location, middleDivisions2);
+            div_location = glGetUniformLocation(program_id, "middle_divisions2");TEST_OPENGL_ERROR();
+            glUniform1f(div_location, middleDivisions2);TEST_OPENGL_ERROR();
             break;
         case '5':
             if (middleDivisions2 > 0)
               middleDivisions2 -= 1;
-            div_location = glGetUniformLocation(program_id, "middle_divisions2");
-            glUniform1f(div_location, middleDivisions2);
+            div_location = glGetUniformLocation(program_id, "middle_divisions2");TEST_OPENGL_ERROR();
+            glUniform1f(div_location, middleDivisions2);TEST_OPENGL_ERROR();
             break;
       // if `escape` then close window
         case 27: exit(0);
     }
 
-    GLint light_location = glGetUniformLocation(program_id, "light_pos");
-    glUniform3f(light_location, lightX, lightY, lightZ);
+    GLint light_location = glGetUniformLocation(program_id, "light_pos");TEST_OPENGL_ERROR();
+    glUniform3f(light_location, lightX, lightY, lightZ);TEST_OPENGL_ERROR();
     glutPostRedisplay();
 }
 
 static void upload_mat4(GLuint prog, const char* name, matrix4& m) {
   GLfloat* v = m.get_values();
-  glUniformMatrix4fv(glGetUniformLocation(prog, name), 1, GL_TRUE, v);
+  glUniformMatrix4fv(glGetUniformLocation(prog, name), 1, GL_TRUE, v);TEST_OPENGL_ERROR();
   delete[] v;
 }
 
@@ -105,7 +111,7 @@ void update_projection() {
 
   matrix4 proj = frustum(-right, right, -top, top, n, f);
 
-  glUseProgram(program_id);
+  glUseProgram(program_id);TEST_OPENGL_ERROR();
   upload_mat4(program_id, "projection", proj);
 }
 
@@ -120,9 +126,9 @@ void update_camera() {
                          0.0f, 0.0f, 0.0f,
                          0.0f, 1.0f, 0.0f);
 
-  glUseProgram(program_id);
+  glUseProgram(program_id);TEST_OPENGL_ERROR();
   upload_mat4(program_id, "camera", view);
-  glUniform3f(glGetUniformLocation(program_id, "cameraPos"), ex, ey, ez);
+  glUniform3f(glGetUniformLocation(program_id, "cameraPos"), ex, ey, ez);TEST_OPENGL_ERROR();
 }
 
 void on_mouse(int button, int state, int x, int y) {
@@ -142,7 +148,7 @@ void on_motion(int x, int y) {
   lastX = x; lastY = y;
 
   update_camera();
-  glutPostRedisplay();
+  glutPostRedisplay();TEST_OPENGL_ERROR();
 }
 
 void on_wheel(int wheel, int dir, int x, int y) {
@@ -150,7 +156,7 @@ void on_wheel(int wheel, int dir, int x, int y) {
   if (camDist < 0.5f)  camDist = 0.5f;
   if (camDist > 20.0f) camDist = 20.0f;
   update_camera();
-  glutPostRedisplay();
+  glutPostRedisplay();TEST_OPENGL_ERROR();
 }
 
 void window_resize(int width, int height) {
@@ -161,20 +167,22 @@ void window_resize(int width, int height) {
 }
 
 void display() {
+  glBindFramebuffer(GL_FRAMEBUFFER, frame_buffer_id);
+  glViewport(0, 0, WIDTH, HEIGHT);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);TEST_OPENGL_ERROR();
-  // update_camera();
-  // update_light();
 
-  glUseProgram(program_id);TEST_OPENGL_ERROR();
-  glBindVertexArray(bunny_vao_id);TEST_OPENGL_ERROR();
+  glUseProgram(program_id);
+  glBindVertexArray(bunny_vao_id);
   glDrawArrays(GL_PATCHES, 0, 4);TEST_OPENGL_ERROR();
-  // glDrawArrays(GL_TRIANGLES, 0, vertex_buffer_data.size());TEST_OPENGL_ERROR();
-  glBindVertexArray(0);TEST_OPENGL_ERROR();
+  glBindVertexArray(0);
 
-  // glUseProgram(program_id_geometry);TEST_OPENGL_ERROR();
-  // glBindVertexArray(bunny_vao_id_geometry);TEST_OPENGL_ERROR();
-  // glDrawArrays(GL_TRIANGLES, 0, vertex_buffer_data.size());TEST_OPENGL_ERROR();
-  // glBindVertexArray(0);TEST_OPENGL_ERROR();
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, frame_buffer_id);
+  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+  glBlitFramebuffer(0, 0, WIDTH, HEIGHT,
+                    0, 0, WIDTH, HEIGHT,
+                    GL_COLOR_BUFFER_BIT, GL_NEAREST);TEST_OPENGL_ERROR();
+
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glutSwapBuffers();
 }
 
@@ -184,17 +192,17 @@ void init_glut(int &argc, char *argv[]) {
   glutInitContextVersion(4,5);
   glutInitContextProfile(GLUT_CORE_PROFILE | GLUT_DEBUG);
   glutInitDisplayMode(GLUT_RGBA|GLUT_DOUBLE|GLUT_DEPTH);
-  glutInitWindowSize(1024, 1024);
-  glutInitWindowPosition ( 100, 100 );
-  glutCreateWindow("Shader Programming");
+  glutInitWindowSize(WIDTH, HEIGHT);TEST_OPENGL_ERROR();
+  glutInitWindowPosition ( 100, 100 );TEST_OPENGL_ERROR();
+  glutCreateWindow("Shader Programming");TEST_OPENGL_ERROR();
 
-  glutDisplayFunc(display);
-  glutMouseFunc(on_mouse);
-  glutMotionFunc(on_motion);
-  glutMouseWheelFunc(on_wheel);
-  glutKeyboardFunc(handleKeyboard);
+  glutDisplayFunc(display);TEST_OPENGL_ERROR();
+  glutMouseFunc(on_mouse);TEST_OPENGL_ERROR();
+  glutMotionFunc(on_motion);TEST_OPENGL_ERROR();
+  glutMouseWheelFunc(on_wheel);TEST_OPENGL_ERROR();
+  glutKeyboardFunc(handleKeyboard);TEST_OPENGL_ERROR();
 
-  glutReshapeFunc(window_resize);
+  // glutReshapeFunc(window_resize);TEST_OPENGL_ERROR();
 }
 
 bool init_glew() {
@@ -202,6 +210,7 @@ bool init_glew() {
     std::cerr << " Error while initializing glew";
     return false;
   }
+  glGetError();
   return true;
 }
 
@@ -269,7 +278,7 @@ bool init_POV(GLuint prog_id) {
   GLint light_pos_location   = glGetUniformLocation(prog_id, "light_pos");
   GLint light_color_location = glGetUniformLocation(prog_id, "light_color");
 
-  glUniform3f(light_pos_location, lightX, lightY, lightZ);   // ABOVE the plane now
+  glUniform3f(light_pos_location, lightX, lightY, lightZ);
   glUniform3f(light_color_location, 1.0f, 1.0f, 1.0f);
 
   GLint div_location = glGetUniformLocation(program_id, "nb_divisions");
@@ -283,6 +292,52 @@ bool init_POV(GLuint prog_id) {
 
   update_projection();
   update_camera();
+  return true;
+}
+
+bool init_frame_buffers()
+{
+  // Setup -- Creation & Binding
+  glCreateFramebuffers(1, &frame_buffer_id);
+  if (frame_buffer_id < 0)
+    throw std::runtime_error("Could not create Frame Buffer");
+  std::cout << "Created frame buffer at location: " << frame_buffer_id << std::endl;
+  glBindFramebuffer(GL_FRAMEBUFFER, frame_buffer_id);
+
+  glGenTextures(1, &fbo_texture);
+  glBindTexture(GL_TEXTURE_2D, fbo_texture);
+
+  glGenRenderbuffers(1, &fbo_depth);
+  glBindRenderbuffer(GL_RENDERBUFFER, fbo_depth);
+
+  // Operation -- Generation & Allocation ?
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WIDTH, HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, WIDTH, HEIGHT);
+  
+  // Attachment -- Attach to FBO
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_texture, 0);
+  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fbo_depth);
+
+  // // Draw
+  // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);TEST_OPENGL_ERROR();
+
+  // glUseProgram(program_id);TEST_OPENGL_ERROR();
+  // glBindVertexArray(bunny_vao_id);TEST_OPENGL_ERROR();
+  // glDrawArrays(GL_PATCHES, 0, 4);TEST_OPENGL_ERROR();
+  // glBindVertexArray(0);TEST_OPENGL_ERROR();
+
+  GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+  if (status != GL_FRAMEBUFFER_COMPLETE) {
+    std::cerr << "FBO incomplet: 0x" << std::hex << status << std::dec << std::endl;
+    return false;
+  }
+
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);TEST_OPENGL_ERROR();
+  glBindTexture(GL_TEXTURE_2D, 0);TEST_OPENGL_ERROR();
+  glBindRenderbuffer(GL_RENDERBUFFER, 0);TEST_OPENGL_ERROR();
   return true;
 }
 
@@ -448,6 +503,7 @@ int main(int argc, char *argv[]) {
   // init_object_vbo(program_id_geometry, bunny_vao_id_geometry);
   init_POV(program_id);
   // init_POV(program_id_geometry);
+  init_frame_buffers();
   init_anim();
   glutMainLoop();
 }

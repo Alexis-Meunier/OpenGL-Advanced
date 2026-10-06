@@ -27,7 +27,7 @@ DIST = main
 
 SKEL_DIST_DIR = pogl_skel_tp
 SKEL_FILES = $(CPP_FILES) $(HXX_FILES) $(MAIN_FILE) Makefile
-SKEL_SHADER_FOLDER = base_bunny normal_bunny
+SKEL_SHADER_FOLDER = base_bunny normal_bunny tesselation
 
 
 #For gcc 4.9
