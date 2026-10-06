@@ -9,9 +9,9 @@
 CC = g++
 
 CPP_FILES =
-CPP_FILES += main.cpp matrix.cpp
+CPP_FILES += matrix.cpp
 HXX_FILES = bunny.hh
-HXX_FILES +=
+HXX_FILES += matrix.hh
 OBJ_FILES = $(CPP_FILES:.cpp=.o)
 
 CXX_FLAGS += -Wall -Wextra -O3 -g -std=c++11
@@ -22,7 +22,7 @@ CXX_FLAGS += -fopt-info-vec-optimized #-fopt-info-vec-missed -ftree-vectorize
 LDXX_FLAGS = -lGL  -lGLEW -lglut -lpthread
 #LDXX_FLAGS += /home/jonathan/work/enseignement/matieres/synthese/prog/opengl/compute_shader/jf_gl_tools/dist_lib/libjfglt.a
 
-MAIN_FILE = main.cpp matrix.cc
+MAIN_FILE = main.cpp
 DIST = main
 
 SKEL_DIST_DIR = pogl_skel_tp
@@ -90,7 +90,7 @@ build: $(OBJ_FILES)
 .PHONY: all clean pre-build post-build main-build build skel
 
 clean:
-	rm -f $(OBJ_FILES)
+	rm -f $(OBJ_FILES) main.o
 	rm -f $(DIST)
 	rm -rf $(SKEL_DIST_DIR).tar.bz2
 
