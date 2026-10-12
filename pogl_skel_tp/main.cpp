@@ -27,6 +27,7 @@ GLuint bunny_vao_id;
 GLuint bunny_vao_id_geometry;
 GLuint program_id;
 GLuint program_id_geometry;
+GLuint program_id_compute;
 GLuint frame_buffer_id;
 GLuint fbo_texture;
 GLuint fbo_depth;
@@ -45,6 +46,8 @@ GLuint middleDivisions2 = 10;
 
 void handleKeyboard(unsigned char key, int x, int y) {
     GLint div_location;
+    (void)x;
+    (void)y;
 
     switch (key)
     {
@@ -54,17 +57,17 @@ void handleKeyboard(unsigned char key, int x, int y) {
         case 'a': lightX += 0.0; lightY += 0.0; lightZ += 0.2; break;
         case 'q': lightY += 0.2; break;
         case 'e': lightY -= 0.2; break;
-        case '+':
-            nbDivisions += 1;
-            div_location = glGetUniformLocation(program_id, "nb_divisions");TEST_OPENGL_ERROR();
-            glUniform1f(div_location, nbDivisions);TEST_OPENGL_ERROR();
-            break;
-        case '-':
-            if (nbDivisions > 0)
-              nbDivisions -= 1;
-            div_location = glGetUniformLocation(program_id, "nb_divisions");TEST_OPENGL_ERROR();
-            glUniform1f(div_location, nbDivisions);TEST_OPENGL_ERROR();
-            break;
+        // case '+':
+        //     nbDivisions += 1;
+        //     div_location = glGetUniformLocation(program_id, "nb_divisions");TEST_OPENGL_ERROR();
+        //     glUniform1f(div_location, nbDivisions);TEST_OPENGL_ERROR();
+        //     break;
+        // case '-':
+        //     if (nbDivisions > 0)
+        //       nbDivisions -= 1;
+        //     div_location = glGetUniformLocation(program_id, "nb_divisions");TEST_OPENGL_ERROR();
+        //     glUniform1f(div_location, nbDivisions);TEST_OPENGL_ERROR();
+        //     break;
         case '7':
             middleDivisions1 += 1;
             div_location = glGetUniformLocation(program_id, "middle_divisions1");TEST_OPENGL_ERROR();
@@ -93,7 +96,7 @@ void handleKeyboard(unsigned char key, int x, int y) {
 
     GLint light_location = glGetUniformLocation(program_id, "light_pos");TEST_OPENGL_ERROR();
     glUniform3f(light_location, lightX, lightY, lightZ);TEST_OPENGL_ERROR();
-    glutPostRedisplay();
+    glutPostRedisplay();TEST_OPENGL_ERROR();
 }
 
 static void upload_mat4(GLuint prog, const char* name, matrix4& m) {
@@ -112,7 +115,7 @@ void update_projection() {
   matrix4 proj = frustum(-right, right, -top, top, n, f);
 
   glUseProgram(program_id);TEST_OPENGL_ERROR();
-  upload_mat4(program_id, "projection", proj);
+  upload_mat4(program_id, "projection", proj);TEST_OPENGL_ERROR();
 }
 
 void update_camera() {
@@ -127,7 +130,7 @@ void update_camera() {
                          0.0f, 1.0f, 0.0f);
 
   glUseProgram(program_id);TEST_OPENGL_ERROR();
-  upload_mat4(program_id, "camera", view);
+  upload_mat4(program_id, "camera", view);TEST_OPENGL_ERROR();
   glUniform3f(glGetUniformLocation(program_id, "cameraPos"), ex, ey, ez);TEST_OPENGL_ERROR();
 }
 
@@ -147,15 +150,18 @@ void on_motion(int x, int y) {
   if (camPitch < 0.05f)  camPitch = 0.05f;
   lastX = x; lastY = y;
 
-  update_camera();
+  update_camera();TEST_OPENGL_ERROR();
   glutPostRedisplay();TEST_OPENGL_ERROR();
 }
 
 void on_wheel(int wheel, int dir, int x, int y) {
+  (void)wheel;
+  (void)x;
+  (void)y;
   camDist -= dir * 0.2f;
   if (camDist < 0.5f)  camDist = 0.5f;
   if (camDist > 20.0f) camDist = 20.0f;
-  update_camera();
+  update_camera();TEST_OPENGL_ERROR();
   glutPostRedisplay();TEST_OPENGL_ERROR();
 }
 
@@ -163,27 +169,31 @@ void window_resize(int width, int height) {
   //std::cout << "glViewport(0,0,"<< width << "," << height << ");TEST_OPENGL_ERROR();" << std::endl;
   glViewport(0, 0, width, height);TEST_OPENGL_ERROR();
   aspect = (height > 0) ? (float)width / (float)height : 1.0f;
-  update_projection();
+  update_projection();TEST_OPENGL_ERROR();
 }
 
 void display() {
-  glBindFramebuffer(GL_FRAMEBUFFER, frame_buffer_id);
-  glViewport(0, 0, WIDTH, HEIGHT);
+  // glBindFramebuffer(GL_FRAMEBUFFER, frame_buffer_id);
+  glViewport(0, 0, WIDTH, HEIGHT);TEST_OPENGL_ERROR();
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);TEST_OPENGL_ERROR();
 
-  glUseProgram(program_id);
-  glBindVertexArray(bunny_vao_id);
-  glDrawArrays(GL_PATCHES, 0, 4);TEST_OPENGL_ERROR();
-  glBindVertexArray(0);
+  glUseProgram(program_id_compute);TEST_OPENGL_ERROR();
+  glDispatchCompute(1024, 1, 1);TEST_OPENGL_ERROR();
+  glMemoryBarrier(GL_ALL_BARRIER_BITS);TEST_OPENGL_ERROR();
 
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, frame_buffer_id);
-  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-  glBlitFramebuffer(0, 0, WIDTH, HEIGHT,
-                    0, 0, WIDTH, HEIGHT,
-                    GL_COLOR_BUFFER_BIT, GL_NEAREST);TEST_OPENGL_ERROR();
+  glUseProgram(program_id);TEST_OPENGL_ERROR();
+  glBindVertexArray(bunny_vao_id);TEST_OPENGL_ERROR();
+  glDrawArrays(GL_TRIANGLES, 0, vertex_buffer_data.size());TEST_OPENGL_ERROR();
+  glBindVertexArray(0);TEST_OPENGL_ERROR();
 
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  glutSwapBuffers();
+  // glBindFramebuffer(GL_READ_FRAMEBUFFER, frame_buffer_id);
+  // glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+  // glBlitFramebuffer(0, 0, WIDTH, HEIGHT,
+  //                   0, 0, WIDTH, HEIGHT,
+  //                   GL_COLOR_BUFFER_BIT, GL_NEAREST);TEST_OPENGL_ERROR();
+
+  // glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glutSwapBuffers();TEST_OPENGL_ERROR();
 }
 
 void init_glut(int &argc, char *argv[]) {
@@ -202,7 +212,7 @@ void init_glut(int &argc, char *argv[]) {
   glutMouseWheelFunc(on_wheel);TEST_OPENGL_ERROR();
   glutKeyboardFunc(handleKeyboard);TEST_OPENGL_ERROR();
 
-  // glutReshapeFunc(window_resize);TEST_OPENGL_ERROR();
+  glutReshapeFunc(window_resize);TEST_OPENGL_ERROR();
 }
 
 bool init_glew() {
@@ -222,36 +232,50 @@ void init_GL() {
   glPatchParameteri(GL_PATCH_VERTICES, 4);
 }
 
-
 void init_object_vbo(GLuint prog_id, GLuint& bunny_id) {
-  int max_nb_vbo = 5;
-  int nb_vbo = 0;
-  int index_vbo = 0;
-  GLuint vbo_ids[max_nb_vbo];
-
+  // int max_nb_vbo = 5;
+  // int nb_vbo = 0;
+  // int index_vbo = 0;
+  // GLuint vbo_ids[max_nb_vbo];
   GLint vertex_location = glGetAttribLocation(prog_id,"position");TEST_OPENGL_ERROR();
   GLint normal_smooth_location = glGetAttribLocation(prog_id,"normalSmooth");TEST_OPENGL_ERROR();
-
   glGenVertexArrays(1, &bunny_id);TEST_OPENGL_ERROR();
   glBindVertexArray(bunny_id);TEST_OPENGL_ERROR();
 
-  if (vertex_location!=-1) nb_vbo++;
-  if (normal_smooth_location!=-1) nb_vbo++;
-  glGenBuffers(nb_vbo, vbo_ids);TEST_OPENGL_ERROR();
+  // glUseProgram(program_id_compute);
+  GLuint compute_ssbo[2];
+  glGenBuffers(2, compute_ssbo);
 
-  if (vertex_location!=-1) {
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_ids[index_vbo++]);TEST_OPENGL_ERROR();
-    glBufferData(GL_ARRAY_BUFFER, vertex_buffer_data.size()*sizeof(float), vertex_buffer_data.data(), GL_STATIC_DRAW);TEST_OPENGL_ERROR();
-    glVertexAttribPointer(vertex_location, 3, GL_FLOAT, GL_FALSE, 0, 0);TEST_OPENGL_ERROR();
-    glEnableVertexAttribArray(vertex_location);TEST_OPENGL_ERROR();
-  }
+  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, compute_ssbo[0]);
+  glBufferData(GL_SHADER_STORAGE_BUFFER, vertex_buffer_data.size()*sizeof(float), vertex_buffer_data.data(), GL_DYNAMIC_DRAW);TEST_OPENGL_ERROR();
+  glVertexAttribPointer(vertex_location, 3, GL_FLOAT, GL_FALSE, 0, 0);TEST_OPENGL_ERROR();
+  glEnableVertexAttribArray(vertex_location);TEST_OPENGL_ERROR();
 
-  if (normal_smooth_location!=-1) {
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_ids[index_vbo++]);TEST_OPENGL_ERROR();
-    glBufferData(GL_ARRAY_BUFFER, normal_smooth_buffer_data.size()*sizeof(float), normal_smooth_buffer_data.data(), GL_STATIC_DRAW);TEST_OPENGL_ERROR();
-    glVertexAttribPointer(normal_smooth_location, 3, GL_FLOAT, GL_FALSE, 0, 0);TEST_OPENGL_ERROR();
-    glEnableVertexAttribArray(normal_smooth_location);TEST_OPENGL_ERROR();
-  }
+  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, compute_ssbo[1]);
+  glBufferData(GL_SHADER_STORAGE_BUFFER, normal_smooth_buffer_data.size()*sizeof(float), normal_smooth_buffer_data.data(), GL_DYNAMIC_DRAW);TEST_OPENGL_ERROR();
+  glVertexAttribPointer(normal_smooth_location, 3, GL_FLOAT, GL_FALSE, 0, 0);TEST_OPENGL_ERROR();
+  glEnableVertexAttribArray(normal_smooth_location);TEST_OPENGL_ERROR();
+
+
+
+  // if (vertex_location!=-1) nb_vbo++;
+  // if (normal_smooth_location!=-1) nb_vbo++;
+  // glGenBuffers(nb_vbo, vbo_ids);TEST_OPENGL_ERROR();
+
+  // glUseProgram(program_id);
+  // if (vertex_location!=-1) {
+  //   glBindBuffer(GL_ARRAY_BUFFER, compute_ssbo[0]);TEST_OPENGL_ERROR();
+  //   glBufferData(GL_ARRAY_BUFFER, vertex_buffer_data.size()*sizeof(float), vertex_buffer_data.data(), GL_STATIC_DRAW);TEST_OPENGL_ERROR();
+  //   glVertexAttribPointer(vertex_location, 3, GL_FLOAT, GL_FALSE, 0, 0);TEST_OPENGL_ERROR();
+  //   glEnableVertexAttribArray(vertex_location);TEST_OPENGL_ERROR();
+  // }
+
+  // if (normal_smooth_location!=-1) {
+  //   glBindBuffer(GL_ARRAY_BUFFER, compute_ssbo[1]);TEST_OPENGL_ERROR();
+  //   glBufferData(GL_ARRAY_BUFFER, normal_smooth_buffer_data.size()*sizeof(float), normal_smooth_buffer_data.data(), GL_STATIC_DRAW);TEST_OPENGL_ERROR();
+  //   glVertexAttribPointer(normal_smooth_location, 3, GL_FLOAT, GL_FALSE, 0, 0);TEST_OPENGL_ERROR();
+  //   glEnableVertexAttribArray(normal_smooth_location);TEST_OPENGL_ERROR();
+  // }
 
   glBindVertexArray(0);
 }
@@ -281,14 +305,14 @@ bool init_POV(GLuint prog_id) {
   glUniform3f(light_pos_location, lightX, lightY, lightZ);
   glUniform3f(light_color_location, 1.0f, 1.0f, 1.0f);
 
-  GLint div_location = glGetUniformLocation(program_id, "nb_divisions");
-  glUniform1f(div_location, nbDivisions);
+  // GLint div_location = glGetUniformLocation(program_id, "nb_divisions");
+  // glUniform1f(div_location, nbDivisions);
 
-  GLint mid_div_location1 = glGetUniformLocation(program_id, "middle_divisions1");
-  glUniform1f(mid_div_location1, middleDivisions1);
+  // GLint mid_div_location1 = glGetUniformLocation(program_id, "middle_divisions1");
+  // glUniform1f(mid_div_location1, middleDivisions1);
 
-  GLint mid_div_location2 = glGetUniformLocation(program_id, "middle_divisions2");
-  glUniform1f(mid_div_location2, middleDivisions2);
+  // GLint mid_div_location2 = glGetUniformLocation(program_id, "middle_divisions2");
+  // glUniform1f(mid_div_location2, middleDivisions2);
 
   update_projection();
   update_camera();
@@ -299,8 +323,8 @@ bool init_frame_buffers()
 {
   // Setup -- Creation & Binding
   glCreateFramebuffers(1, &frame_buffer_id);
-  if (frame_buffer_id < 0)
-    throw std::runtime_error("Could not create Frame Buffer");
+  // if (frame_buffer_id < 0)
+  //   throw std::runtime_error("Could not create Frame Buffer");
   std::cout << "Created frame buffer at location: " << frame_buffer_id << std::endl;
   glBindFramebuffer(GL_FRAMEBUFFER, frame_buffer_id);
 
@@ -342,26 +366,33 @@ bool init_frame_buffers()
 }
 
 bool init_shaders() {
-  std::string vertex_src = load("base_bunny/vertex.shd");
-  std::string fragment_src = load("base_bunny/fragment.shd");
-  std::string tesselation_control_src = load("tesselation/control.shd");
-  std::string tesselation_evaluation_src = load("tesselation/evaluation.shd");
+  // std::string vertex_src = load("base_bunny/vertex.shd");
+  // std::string fragment_src = load("base_bunny/fragment.shd");
+  std::string vertex_src = load("compute/vertex.shd");
+  std::string fragment_src = load("compute/fragment.shd");
+  std::string compute_src = load("compute/compute.shd");
+  // std::string vertex_src = load("tesselation/vertex.shd");
+  // std::string fragment_src = load("tesselation/fragment.shd");
+  // std::string tesselation_control_src = load("tesselation/control.shd");
+  // std::string tesselation_evaluation_src = load("tesselation/evaluation.shd");
   // std::string vertex_geometry_src = load("normal_bunny/vertex.shd");
   // std::string geometry_src = load("normal_bunny/geometry.shd");
   // std::string fragment_geometry_src = load("normal_bunny/fragment.shd");
-  GLuint shader_id[4];
+  GLuint shader_id[3];
   GLint compile_status = GL_TRUE;
   char *vertex_shd_src = (char*)std::malloc(vertex_src.length()*sizeof(char));
   char *fragment_shd_src = (char*)std::malloc(fragment_src.length()*sizeof(char));
-  char *tesselation_control_shd_src = (char*)std::malloc(tesselation_control_src.length()*sizeof(char));
-  char *tesselation_evaluation_shd_src = (char*)std::malloc(tesselation_evaluation_src.length()*sizeof(char));
+  char *compute_shd_src = (char*)std::malloc(compute_src.length()*sizeof(char));
+  // char *tesselation_control_shd_src = (char*)std::malloc(tesselation_control_src.length()*sizeof(char));
+  // char *tesselation_evaluation_shd_src = (char*)std::malloc(tesselation_evaluation_src.length()*sizeof(char));
   // char *vertex_geometry_shd_src = (char*)std::malloc(vertex_geometry_src.length()*sizeof(char));
   // char *geometry_shd_src = (char*)std::malloc(geometry_src.length()*sizeof(char));
   // char *fragment_geometry_shd_src = (char*)std::malloc(fragment_geometry_src.length()*sizeof(char));
   vertex_src.copy(vertex_shd_src, vertex_src.length());
   fragment_src.copy(fragment_shd_src, fragment_src.length());
-  tesselation_control_src.copy(tesselation_control_shd_src, tesselation_control_src.length());
-  tesselation_evaluation_src.copy(tesselation_evaluation_shd_src, tesselation_evaluation_src.length());
+  compute_src.copy(compute_shd_src, compute_src.length());
+  // tesselation_control_src.copy(tesselation_control_shd_src, tesselation_control_src.length());
+  // tesselation_evaluation_src.copy(tesselation_evaluation_shd_src, tesselation_evaluation_src.length());
   // vertex_geometry_src.copy(vertex_geometry_shd_src,vertex_geometry_src.length());
   // geometry_src.copy(geometry_shd_src,geometry_src.length());
   // fragment_geometry_src.copy(fragment_geometry_shd_src,fragment_geometry_src.length());
@@ -369,20 +400,22 @@ bool init_shaders() {
 
   shader_id[0] = glCreateShader(GL_VERTEX_SHADER);TEST_OPENGL_ERROR();
   shader_id[1] = glCreateShader(GL_FRAGMENT_SHADER);TEST_OPENGL_ERROR();
-  shader_id[2] = glCreateShader(GL_TESS_CONTROL_SHADER);TEST_OPENGL_ERROR();
-  shader_id[3] = glCreateShader(GL_TESS_EVALUATION_SHADER);TEST_OPENGL_ERROR();
+  shader_id[2] = glCreateShader(GL_COMPUTE_SHADER);TEST_OPENGL_ERROR();
+  // shader_id[2] = glCreateShader(GL_TESS_CONTROL_SHADER);TEST_OPENGL_ERROR();
+  // shader_id[3] = glCreateShader(GL_TESS_EVALUATION_SHADER);TEST_OPENGL_ERROR();
   // shader_id[2] = glCreateShader(GL_VERTEX_SHADER);TEST_OPENGL_ERROR();
   // shader_id[3] = glCreateShader(GL_GEOMETRY_SHADER);TEST_OPENGL_ERROR();
   // shader_id[4] = glCreateShader(GL_FRAGMENT_SHADER);TEST_OPENGL_ERROR();
 
   glShaderSource(shader_id[0], 1, (const GLchar**)&(vertex_shd_src), 0);TEST_OPENGL_ERROR();
   glShaderSource(shader_id[1], 1, (const GLchar**)&(fragment_shd_src), 0);TEST_OPENGL_ERROR();
-  glShaderSource(shader_id[2], 1, (const GLchar**)&(tesselation_control_shd_src), 0);TEST_OPENGL_ERROR();
-  glShaderSource(shader_id[3], 1, (const GLchar**)&(tesselation_evaluation_shd_src), 0);TEST_OPENGL_ERROR();
+  glShaderSource(shader_id[2], 1, (const GLchar**)&(compute_shd_src), 0);TEST_OPENGL_ERROR();
+  // glShaderSource(shader_id[2], 1, (const GLchar**)&(tesselation_control_shd_src), 0);TEST_OPENGL_ERROR();
+  // glShaderSource(shader_id[3], 1, (const GLchar**)&(tesselation_evaluation_shd_src), 0);TEST_OPENGL_ERROR();
   // glShaderSource(shader_id[2], 1, (const GLchar**)&(vertex_geometry_shd_src), 0);TEST_OPENGL_ERROR();
   // glShaderSource(shader_id[3], 1, (const GLchar**)&(geometry_shd_src), 0);TEST_OPENGL_ERROR();
   // glShaderSource(shader_id[4], 1, (const GLchar**)&(fragment_geometry_shd_src), 0);TEST_OPENGL_ERROR();
-  for(int i = 0 ; i < 4; i++) {
+  for(int i = 0 ; i < 3; i++) {
     glCompileShader(shader_id[i]);TEST_OPENGL_ERROR();
     glGetShaderiv(shader_id[i], GL_COMPILE_STATUS, &compile_status);
     if(compile_status != GL_TRUE) {
@@ -400,21 +433,23 @@ bool init_shaders() {
       glDeleteShader(shader_id[0]);
       glDeleteShader(shader_id[1]);
       glDeleteShader(shader_id[2]);
-      glDeleteShader(shader_id[3]);
+      // glDeleteShader(shader_id[3]);
       // glDeleteShader(shader_id[4]);
       return false;
     }
   }
   std::free(vertex_shd_src);
   std::free(fragment_shd_src);
-  std::free(tesselation_control_shd_src);
-  std::free(tesselation_evaluation_shd_src);
+  std::free(compute_shd_src);
+  // std::free(tesselation_control_shd_src);
+  // std::free(tesselation_evaluation_shd_src);
 
 
   GLint link_status=GL_TRUE;
   program_id=glCreateProgram();TEST_OPENGL_ERROR();
+  std::cout << "Program_id: " << program_id << std::endl;
   if (program_id==0) return false;
-  for(int i = 0 ; i < 4 ; i++) {
+  for(int i = 0 ; i < 2; i++) {
     glAttachShader(program_id, shader_id[i]);TEST_OPENGL_ERROR();
   }
   glLinkProgram(program_id);TEST_OPENGL_ERROR();
@@ -433,40 +468,42 @@ bool init_shaders() {
     glDeleteShader(shader_id[0]);TEST_OPENGL_ERROR();
     glDeleteShader(shader_id[1]);TEST_OPENGL_ERROR();
     glDeleteShader(shader_id[2]);TEST_OPENGL_ERROR();
-    glDeleteShader(shader_id[3]);TEST_OPENGL_ERROR();
+    // glDeleteShader(shader_id[3]);TEST_OPENGL_ERROR();
     // glDeleteShader(shader_id[4]);TEST_OPENGL_ERROR();
     program_id=0;
     return false;
   }
 
-  // link_status=GL_TRUE;
-  // program_id_geometry=glCreateProgram();TEST_OPENGL_ERROR();
-  // if (program_id_geometry==0) return false;
-  // for(int i = 2 ; i < 5 ; i++) {
-  //     glAttachShader(program_id_geometry, shader_id[i]);TEST_OPENGL_ERROR();
-  // }
-  // glLinkProgram(program_id_geometry);TEST_OPENGL_ERROR();
-  // glGetProgramiv(program_id_geometry, GL_LINK_STATUS, &link_status);
-  // if (link_status!=GL_TRUE) {
-  //   GLint log_size;
-  //   char *program_log;
-  //   glGetProgramiv(program_id_geometry, GL_INFO_LOG_LENGTH, &log_size);
-  //   program_log = (char*)std::malloc(log_size+1); /* +1 pour le caractere de fin de chaine '\0' */
-  //   if(program_log != 0) {
-  //     glGetProgramInfoLog(program_id_geometry, log_size, &log_size, program_log);
-  //     std::cerr << "Program " << program_log << std::endl;
-  //     std::free(program_log);
-  //   }
-  //   glDeleteProgram(program_id_geometry);TEST_OPENGL_ERROR();
-  //   glDeleteShader(shader_id[0]);TEST_OPENGL_ERROR();
-  //   glDeleteShader(shader_id[1]);TEST_OPENGL_ERROR();
-  //   glDeleteShader(shader_id[2]);TEST_OPENGL_ERROR();
-  //   glDeleteShader(shader_id[3]);TEST_OPENGL_ERROR();
-  //   glDeleteShader(shader_id[4]);TEST_OPENGL_ERROR();
-  //   program_id_geometry=0;
-  //   return false;
-  // }
-  // glUseProgram(program_id_geometry);
+  link_status=GL_TRUE;
+  program_id_compute=glCreateProgram();TEST_OPENGL_ERROR();
+  if (program_id_compute==0) return false;
+  for(int i = 2 ; i < 3 ; i++) {
+      glAttachShader(program_id_compute, shader_id[i]);TEST_OPENGL_ERROR();
+  }
+  glLinkProgram(program_id_compute);TEST_OPENGL_ERROR();
+  glGetProgramiv(program_id_compute, GL_LINK_STATUS, &link_status);
+  if (link_status!=GL_TRUE) {
+    GLint log_size;
+    char *program_log;
+    glGetProgramiv(program_id_compute, GL_INFO_LOG_LENGTH, &log_size);
+    program_log = (char*)std::malloc(log_size+1); /* +1 pour le caractere de fin de chaine '\0' */
+    if(program_log != 0) {
+      glGetProgramInfoLog(program_id_compute, log_size, &log_size, program_log);
+      std::cerr << "Program " << program_log << std::endl;
+      std::free(program_log);
+    }
+    glDeleteProgram(program_id_compute);TEST_OPENGL_ERROR();
+    // glDeleteShader(shader_id[0]);TEST_OPENGL_ERROR();
+    // glDeleteShader(shader_id[1]);TEST_OPENGL_ERROR();
+    glDeleteShader(shader_id[2]);TEST_OPENGL_ERROR();
+    // glDeleteShader(shader_id[3]);TEST_OPENGL_ERROR();
+    // glDeleteShader(shader_id[4]);TEST_OPENGL_ERROR();
+    program_id_compute=0;
+    return false;
+  }
+  glUseProgram(program_id_compute);TEST_OPENGL_ERROR();
+  GLint vertex_location = glGetUniformLocation(program_id_compute, "nb_vertex");TEST_OPENGL_ERROR();
+  glUniform1i(vertex_location, vertex_buffer_data.size());TEST_OPENGL_ERROR();
   // GLint normal_length_pos = glGetUniformLocation(program_id_geometry, "normal_length");TEST_OPENGL_ERROR();
   // glUniform1f(normal_length_pos, normal_length);
   glUseProgram(program_id);TEST_OPENGL_ERROR();
@@ -475,9 +512,9 @@ bool init_shaders() {
 
 void anim() {
   GLint anim_time_location;
-  //glUseProgram(program_id);
+  glUseProgram(program_id_compute);
   anim_time_location =
-  glGetUniformLocation(program_id, "anim_time");
+  glGetUniformLocation(program_id_compute, "anim_time");
   glUniform1f(anim_time_location, anim_time);
   anim_time += 0.1;
   // testez une borne max.
@@ -486,11 +523,12 @@ void anim() {
 
 void timer(int value) {
   anim();
+  (void)value;
   glutTimerFunc(33,timer,0);
 }
 
 void init_anim() {
-  glutTimerFunc(33,timer,0);
+  glutTimerFunc(200,timer,0);
 }
 
 int main(int argc, char *argv[]) {
@@ -503,7 +541,7 @@ int main(int argc, char *argv[]) {
   // init_object_vbo(program_id_geometry, bunny_vao_id_geometry);
   init_POV(program_id);
   // init_POV(program_id_geometry);
-  init_frame_buffers();
+  // init_frame_buffers();
   init_anim();
   glutMainLoop();
 }

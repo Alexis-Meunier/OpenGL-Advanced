@@ -1,0 +1,33 @@
+#version 450
+
+in vec3 position;
+in vec3 normalSmooth;
+
+out vec3 vs_color;
+out vec3 vs_normal;
+out vec3 vs_pos;
+
+vec3 object_color = vec3(0.12, 0.22, 0.8);
+
+uniform mat4 camera;
+// = mat4(
+//                          0.57735, -0.33333, 0.57735, 0.00000,
+//                          0.00000, 0.66667, 0.57735, 0.00000,
+//                          -0.57735, -0.33333, 0.57735, 0.00000,
+//                          0.00000, 0.00000, -17, 1.00000);
+
+uniform mat4 projection;
+// = mat4(
+//                          15.00000, 0.00000, 0.00000, 0.00000,
+//                          0.00000, 15.00000, 0.00000, 0.00000,
+//                          0.00000, 0.00000, -1.00020, -1.00000,
+//                          0.00000, 0.00000, -10.00100, 0.00000);
+
+
+void main() {
+  gl_Position = projection * camera * vec4(position, 1.0);
+
+  vs_pos = gl_Position.xyz;
+  vs_color = object_color;
+  vs_normal = normalSmooth;
+}
