@@ -3,9 +3,9 @@
 in vec3 position;
 in vec3 normalSmooth;
 
-out vec3 vs_color;
-out vec3 vs_normal;
-out vec3 vs_pos;
+layout(location=1) out vec3 vs_color;
+layout(location=2) out vec3 vs_normal;
+layout(location=3) out vec3 vs_pos;
 
 vec3 object_color = vec3(0.12, 0.22, 0.8);
 
