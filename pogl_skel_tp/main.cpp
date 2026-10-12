@@ -183,7 +183,7 @@ void display() {
 
   glUseProgram(program_id);TEST_OPENGL_ERROR();
   glBindVertexArray(bunny_vao_id);TEST_OPENGL_ERROR();
-  glDrawArrays(GL_TRIANGLES, 0, vertex_buffer_data.size());TEST_OPENGL_ERROR();
+  glDrawArrays(GL_TRIANGLES, 0, vertex_buffer_data.size() / 3);TEST_OPENGL_ERROR();
   glBindVertexArray(0);TEST_OPENGL_ERROR();
 
   // glBindFramebuffer(GL_READ_FRAMEBUFFER, frame_buffer_id);
@@ -243,39 +243,42 @@ void init_object_vbo(GLuint prog_id, GLuint& bunny_id) {
   glBindVertexArray(bunny_id);TEST_OPENGL_ERROR();
 
   // glUseProgram(program_id_compute);
-  GLuint compute_ssbo[2];
-  glGenBuffers(2, compute_ssbo);
+  GLuint compute_ssbo[3];
+  glGenBuffers(3, compute_ssbo);
 
+  // glUseProgram(program_id);
   glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, compute_ssbo[0]);
   glBufferData(GL_SHADER_STORAGE_BUFFER, vertex_buffer_data.size()*sizeof(float), vertex_buffer_data.data(), GL_DYNAMIC_DRAW);TEST_OPENGL_ERROR();
-  glVertexAttribPointer(vertex_location, 3, GL_FLOAT, GL_FALSE, 0, 0);TEST_OPENGL_ERROR();
-  glEnableVertexAttribArray(vertex_location);TEST_OPENGL_ERROR();
+  // glVertexAttribPointer(vertex_location, 3, GL_FLOAT, GL_FALSE, 0, 0);TEST_OPENGL_ERROR();
+  // glEnableVertexAttribArray(vertex_location);TEST_OPENGL_ERROR();
 
   glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, compute_ssbo[1]);
   glBufferData(GL_SHADER_STORAGE_BUFFER, normal_smooth_buffer_data.size()*sizeof(float), normal_smooth_buffer_data.data(), GL_DYNAMIC_DRAW);TEST_OPENGL_ERROR();
-  glVertexAttribPointer(normal_smooth_location, 3, GL_FLOAT, GL_FALSE, 0, 0);TEST_OPENGL_ERROR();
-  glEnableVertexAttribArray(normal_smooth_location);TEST_OPENGL_ERROR();
+  // glVertexAttribPointer(normal_smooth_location, 3, GL_FLOAT, GL_FALSE, 0, 0);TEST_OPENGL_ERROR();
+  // glEnableVertexAttribArray(normal_smooth_location);TEST_OPENGL_ERROR();
 
+  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, compute_ssbo[2]);
+  glBufferData(GL_SHADER_STORAGE_BUFFER, vertex_buffer_data.size()*sizeof(float), vertex_buffer_data.data(), GL_STATIC_DRAW);TEST_OPENGL_ERROR();
 
 
   // if (vertex_location!=-1) nb_vbo++;
   // if (normal_smooth_location!=-1) nb_vbo++;
   // glGenBuffers(nb_vbo, vbo_ids);TEST_OPENGL_ERROR();
 
-  // glUseProgram(program_id);
-  // if (vertex_location!=-1) {
-  //   glBindBuffer(GL_ARRAY_BUFFER, compute_ssbo[0]);TEST_OPENGL_ERROR();
-  //   glBufferData(GL_ARRAY_BUFFER, vertex_buffer_data.size()*sizeof(float), vertex_buffer_data.data(), GL_STATIC_DRAW);TEST_OPENGL_ERROR();
-  //   glVertexAttribPointer(vertex_location, 3, GL_FLOAT, GL_FALSE, 0, 0);TEST_OPENGL_ERROR();
-  //   glEnableVertexAttribArray(vertex_location);TEST_OPENGL_ERROR();
-  // }
+  glUseProgram(program_id);
+  if (vertex_location!=-1) {
+    glBindBuffer(GL_ARRAY_BUFFER, compute_ssbo[0]);TEST_OPENGL_ERROR();
+    // glBufferData(GL_ARRAY_BUFFER, vertex_buffer_data.size()*sizeof(float), vertex_buffer_data.data(), GL_STATIC_DRAW);TEST_OPENGL_ERROR();
+    glVertexAttribPointer(vertex_location, 3, GL_FLOAT, GL_FALSE, 0, 0);TEST_OPENGL_ERROR();
+    glEnableVertexAttribArray(vertex_location);TEST_OPENGL_ERROR();
+  }
 
-  // if (normal_smooth_location!=-1) {
-  //   glBindBuffer(GL_ARRAY_BUFFER, compute_ssbo[1]);TEST_OPENGL_ERROR();
-  //   glBufferData(GL_ARRAY_BUFFER, normal_smooth_buffer_data.size()*sizeof(float), normal_smooth_buffer_data.data(), GL_STATIC_DRAW);TEST_OPENGL_ERROR();
-  //   glVertexAttribPointer(normal_smooth_location, 3, GL_FLOAT, GL_FALSE, 0, 0);TEST_OPENGL_ERROR();
-  //   glEnableVertexAttribArray(normal_smooth_location);TEST_OPENGL_ERROR();
-  // }
+  if (normal_smooth_location!=-1) {
+    glBindBuffer(GL_ARRAY_BUFFER, compute_ssbo[1]);TEST_OPENGL_ERROR();
+    // glBufferData(GL_ARRAY_BUFFER, normal_smooth_buffer_data.size()*sizeof(float), normal_smooth_buffer_data.data(), GL_STATIC_DRAW);TEST_OPENGL_ERROR();
+    glVertexAttribPointer(normal_smooth_location, 3, GL_FLOAT, GL_FALSE, 0, 0);TEST_OPENGL_ERROR();
+    glEnableVertexAttribArray(normal_smooth_location);TEST_OPENGL_ERROR();
+  }
 
   glBindVertexArray(0);
 }
@@ -503,7 +506,7 @@ bool init_shaders() {
   }
   glUseProgram(program_id_compute);TEST_OPENGL_ERROR();
   GLint vertex_location = glGetUniformLocation(program_id_compute, "nb_vertex");TEST_OPENGL_ERROR();
-  glUniform1i(vertex_location, vertex_buffer_data.size());TEST_OPENGL_ERROR();
+  glUniform1ui(vertex_location, vertex_buffer_data.size() / 3);TEST_OPENGL_ERROR();
   // GLint normal_length_pos = glGetUniformLocation(program_id_geometry, "normal_length");TEST_OPENGL_ERROR();
   // glUniform1f(normal_length_pos, normal_length);
   glUseProgram(program_id);TEST_OPENGL_ERROR();
