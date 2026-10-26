@@ -2,10 +2,10 @@
 
 #include "bunny.h"
 
-Camera Scene::_camera;
-bool Scene::_dragging = false;
-float Scene::_lastX = 0.f;
-float Scene::_lastY = 0.f;
+void Scene::update_camera()
+{
+    _camera.update_camera();
+}
 
 void Scene::window_resize(int width, int height) {
     glViewport(0, 0, width, height);
@@ -14,29 +14,35 @@ void Scene::window_resize(int width, int height) {
 
 void Scene::on_mouse(int button, int state, int x, int y)
 {
-    if (button == GLUT_LEFT_BUTTON) {
-        _dragging = (state == GLUT_DOWN);
-        _lastX = x; _lastY = y;
-    }
+    if (button == GLUT_RIGHT_BUTTON) _dragging = (state == GLUT_DOWN);
+    if (button == GLUT_LEFT_BUTTON)  _panning  = (state == GLUT_DOWN);
+    _lastX = x; _lastY = y;
     glutPostRedisplay();
 }
 
 void Scene::on_motion(int x, int y)
 {
-    if (!_dragging) return;
+    if (_dragging)
+    {
+        _camera.yaw   -= (x - _lastX) * 0.005f;
+        _camera.pitch += (y - _lastY) * 0.005f;
+        if (_camera.pitch > 1.5f)  _camera.pitch = 1.5f;
+        if (_camera.pitch < 0.05f) _camera.pitch = 0.05f;
+        _camera.update_camera();
+    }
+    else if (_panning)
+    {
+        _camera.pan(x - _lastX, y - _lastY);
+    }
+    else return;
 
-    _camera.yaw -= (x - _lastX) * 0.005f;
-    _camera.pitch += (y - _lastY) * 0.005f;
-    if (_camera.pitch >  1.5f) _camera.pitch =  1.5f;
-    if (_camera.pitch < 0.05f) _camera.pitch = 0.05f;
     _lastX = x; _lastY = y;
-
-    _camera.update_camera();
     glutPostRedisplay();
 }
 
 void Scene::on_wheel(int w, int d, int x, int y)
 {
+    (void)w; (void)x; (void)y;
     _camera.dist -= d * 0.2f;
     if (_camera.dist < 0.5f)  _camera.dist = 0.5f;
     if (_camera.dist > 20.0f) _camera.dist = 20.0f;
@@ -45,10 +51,9 @@ void Scene::on_wheel(int w, int d, int x, int y)
     glutPostRedisplay();
 }
 
-void Scene::handleKeyboard(unsigned char c, int x, int y)
+void Scene::handle_keyboard(unsigned char c, int x, int y)
 {
-    GLint div_location;
-
+    (void)x; (void)y;
     switch (c)
     {
         // case 's': lightX += 0.2; lightY += 0.0; lightZ += 0.0; break;
@@ -96,12 +101,10 @@ void Scene::handleKeyboard(unsigned char c, int x, int y)
     glutPostRedisplay();
 }
 
-void Scene::render() const
+void Scene::render()
 {
     for (const auto& obj : _objects)
-    {
-        obj.render(_camera.get_view_matrix(), _camera.get_proj_matrix());
-    }
+        obj.render(_camera.get_view_matrix(), _camera.get_proj_matrix(), _camera.get_pos());
 }
 
 std::shared_ptr<Scene> Scene::default_scene()

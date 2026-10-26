@@ -86,6 +86,11 @@ void Program::set_uniform_mat4(const std::string& name, const matrix4& m) const
                               1, GL_TRUE, vals);
 }
 
+void Program::set_uniform_vec3(const std::string& name, const vec3& v) const
+{
+    glProgramUniform3f(_index, glGetUniformLocation(_index, name.c_str()), v.x, v.y, v.z);
+}
+
 void Program::bind() const
 {
     glUseProgram(_index);

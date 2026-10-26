@@ -18,6 +18,11 @@ void Material::set_mat4(const std::string& name, const matrix4& m) const
     _program->set_uniform_mat4(name, m);
 }
 
+void Material::set_vec3(const std::string& name, const vec3& v) const
+{
+    _program->set_uniform_vec3(name, v);
+}
+
 void Material::bind() const
 {
     // TODO: Set drawing parameters such as blend etc...

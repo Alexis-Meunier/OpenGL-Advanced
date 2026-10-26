@@ -3,6 +3,7 @@
 
 int main(int argc, char **argv)
 {
+    (void)argc; (void)argv;
     App app = App::init();
 
     auto default_scene = Scene::default_scene();

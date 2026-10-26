@@ -14,12 +14,10 @@ class App {
         App() = delete;
         static App init(const uint& width = 512, const uint& height = 512);
 
-        void set_render_loop(void (*func)());
-
         void load_new_scene(std::shared_ptr<Scene>& scene);
 
         void render();
-        static void display();
+        void display();
 
     private:
         App(const uint& width = 512, const uint& height = 512);
@@ -27,10 +25,10 @@ class App {
         bool init_glew();
         void init_GL();
 
-        static std::shared_ptr<Scene> _scene;
+        std::shared_ptr<Scene> _scene;
 
-        static uint _width;
-        static uint _height;
+        uint _width;
+        uint _height;
         std::vector<Program> _programs;
 };
 

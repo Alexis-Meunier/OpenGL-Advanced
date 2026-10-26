@@ -3,26 +3,42 @@
 #include "matrix.h"
 #include <cmath>
 
-std::shared_ptr<Scene> App::_scene = nullptr;
-uint App::_width  = 512;
-uint App::_height = 512;
+static App* g_app = nullptr;
+static Scene* g_scene = nullptr;
+
+static void cb_display()  { g_app->display(); }
+static void cb_resize(int w, int h)                       { g_scene->window_resize(w, h); }
+static void cb_mouse(int b, int s, int x, int y)          { g_scene->on_mouse(b, s, x, y); }
+static void cb_motion(int x, int y)                       { g_scene->on_motion(x, y); }
+static void cb_wheel(int w, int d, int x, int y)          { g_scene->on_wheel(w, d, x, y); }
+static void cb_keyboard(unsigned char c, int x, int y)    { g_scene->handle_keyboard(c, x, y); }
 
 void App::display()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    _scene->render();
+    g_scene->render();
     glutSwapBuffers();
     glutPostRedisplay();
 }
 
+
 void App::load_new_scene(std::shared_ptr<Scene>& scene)
 {
     _scene = scene;
+    g_scene = _scene.get();
+    g_scene->window_resize(_width, _height);
 }
 
 void App::render()
 {
-    glutDisplayFunc(App::display);
+    g_app = this;
+    g_scene->update_camera();
+    glutDisplayFunc(cb_display);
+    glutMouseFunc(cb_mouse);
+    glutMotionFunc(cb_motion);
+    glutMouseWheelFunc(cb_wheel);
+    glutKeyboardFunc(cb_keyboard);
+    glutReshapeFunc(cb_resize);
     glutMainLoop();
 }
 
@@ -49,13 +65,6 @@ void App::init_glut(int &argc, char *argv[]) {
     glutCreateWindow("POGLA Project");
 
     glEnable(GL_PROGRAM_POINT_SIZE);
-
-    glutMouseFunc(Scene::on_mouse);
-    glutMotionFunc(Scene::on_motion);
-    glutMouseWheelFunc(Scene::on_wheel);
-    glutKeyboardFunc(Scene::handleKeyboard);
-
-    glutReshapeFunc(Scene::window_resize);
 }
 
 bool App::init_glew() {
@@ -66,11 +75,6 @@ bool App::init_glew() {
     }
     glGetError();
     return true;
-}
-
-void App::set_render_loop(void (*func)())
-{
-    glutDisplayFunc(func);
 }
 
 App::App(const uint& width, const uint& height)
@@ -84,7 +88,6 @@ App::App(const uint& width, const uint& height)
     init_glut(argc, argv);
     init_glew();
     init_GL();
-    Scene::window_resize(_width, _height);
 }
 
 App App::init(const uint& width, const uint& height)

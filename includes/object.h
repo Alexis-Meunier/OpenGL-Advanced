@@ -21,7 +21,7 @@ class Object {
         Object(const std::string& obj_path);
         Object(const std::vector<GLfloat>& vertices, const std::vector<GLfloat>& normals, const std::shared_ptr<Material>& material);
 
-        void render(const matrix4& view, const matrix4& proj) const;
+        void render(const matrix4& view, const matrix4& proj, const vec3& cam_pos) const;
 
     private:
         Buffer _vertices;

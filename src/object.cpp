@@ -1,10 +1,10 @@
 #include "object.h"
 
-Object::Object(const std::string& obj_path)
-{
-    // TODO: stb_load or whatever
-    _material = NULL;
-}
+// Object::Object(const std::string& obj_path)
+// {
+//     // TODO: stb_load or whatever
+//     _material = NULL;
+// }
 
 Object::Object(const std::vector<GLfloat>& vertices, const std::vector<GLfloat>& normals, const std::shared_ptr<Material>& material)
 {
@@ -21,11 +21,12 @@ Object::Object(const std::vector<GLfloat>& vertices, const std::vector<GLfloat>&
     glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(GLfloat), normals.data(), GL_STATIC_DRAW);
 }
 
-void Object::render(const matrix4& view, const matrix4& proj) const
+void Object::render(const matrix4& view, const matrix4& proj, const vec3& cam_pos) const
 {
     _material->bind();
     _material->set_mat4("view", view);
     _material->set_mat4("proj", proj);
+    _material->set_vec3("cameraPos", cam_pos);
 
     glBindBuffer(GL_ARRAY_BUFFER, _vertices.index);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);

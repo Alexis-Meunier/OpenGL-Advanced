@@ -18,6 +18,7 @@ class Program {
         void set_uniform(const std::string& name);
 
         void set_uniform_mat4(const std::string& name, const matrix4& m) const;
+        void set_uniform_vec3(const std::string& name, const vec3& v) const;
 
         void link();
         void bind() const;

@@ -17,6 +17,7 @@ class Material {
         void bind() const;
 
         void set_mat4(const std::string& name, const matrix4& m) const;
+        void set_vec3(const std::string& name, const vec3& v) const;
 
     private:
         std::shared_ptr<Program> _program;

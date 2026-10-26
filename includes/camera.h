@@ -14,10 +14,13 @@ class Camera {
         matrix4& get_view_matrix();
         matrix4& get_proj_matrix();
 
-        float yaw;
-        float pitch;
-        float dist;
+        const vec3& get_pos() const { return _pos; }
+
+        float yaw, pitch, dist;
+        void pan(float dx, float dy);
+
     private:
+    vec3 _target;
         matrix4 _view;
         matrix4 _proj;
         vec3 _pos;
