@@ -1,0 +1,21 @@
+#version 450
+
+layout(location=0) in vec3 position;
+layout(location=1) in vec3 normalSmooth;
+
+layout(location=0) out vec3 vs_color;
+layout(location=1) out vec3 vs_normal;
+layout(location=2) out vec3 vs_pos;
+
+vec3 object_color = vec3(0.12, 0.22, 0.8);
+
+uniform mat4 view;
+uniform mat4 proj;
+
+void main() {
+  gl_Position = proj * view * vec4(position, 1.0);
+  vs_pos = gl_Position.xyz;
+
+  vs_color = object_color;
+  vs_normal = normalSmooth;
+}
