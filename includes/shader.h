@@ -8,8 +8,8 @@
 enum ShaderType {
     FRAG        = GL_FRAGMENT_SHADER,         // Fragment Shader
     VERT        = GL_VERTEX_SHADER,           // Vertex Shader
-    TESS_CTRL   = GL_TESS_EVALUATION_SHADER,  // Tesselation Control Shader
-    TESS_EVAL   = GL_TESS_CONTROL_SHADER,     // Tesselation Evaluation Shader
+    TESS_CTRL   = GL_TESS_CONTROL_SHADER,     // Tesselation Control Shader
+    TESS_EVAL   = GL_TESS_EVALUATION_SHADER,  // Tesselation Evaluation Shader
     GEO         = GL_GEOMETRY_SHADER,         // Geometry Shader
     COMP        = GL_COMPUTE_SHADER,          // Compute Shader
 };

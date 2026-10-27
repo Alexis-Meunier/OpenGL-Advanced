@@ -24,6 +24,7 @@ class vec3
 public:
     vec3() = default;
     vec3(const GLfloat& x, const GLfloat& y, const GLfloat& z);
+    vec3(const GLfloat& x);
     GLfloat x;
     GLfloat y;
     GLfloat z;
@@ -35,6 +36,9 @@ matrix4 look_at(const GLfloat& eyeX, const GLfloat &eyeY, const GLfloat& eyeZ,
 
 matrix4 frustum(const GLfloat& left, const GLfloat &right, const GLfloat& bottom,
              const GLfloat& top, const GLfloat& z_near, const GLfloat& z_far);
+
+matrix4 translation(const vec3& t);
+matrix4 scaling(const vec3& s);
 
 vec3 vec_prod(vec3& lhs, const vec3& rhs);
 

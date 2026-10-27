@@ -10,11 +10,6 @@ Program::Program()
     _linked = false;
 }
 
-void Program::set_uniform(const std::string& name)
-{
-    glProgramUniform3f(_index, glGetUniformLocation(_index, name.c_str()), 1.0, 1.0, 1.0);
-}
-
 void Program::attach_shader(const std::string& shd_path, const ShaderType& type)
 {
     if (_linked)
@@ -40,6 +35,54 @@ void Program::attach_compiled_shader(std::shared_ptr<Shader>& shader)
     _shaders.push_back(shader);
 
     glAttachShader(_index, shader->_index);
+}
+
+void Program::attach_tess_shader(const std::string& tess_ctrl_path, const std::string& tess_eval_path)
+{
+    if (_linked)
+    { 
+        std::cerr << "Program is already linked, can't add a new shader." << std::endl;
+        return; 
+    }
+
+    auto tess_ctrl_shd = std::make_shared<Shader>(SHADER_PATH + tess_ctrl_path, TESS_CTRL);
+    _shaders.push_back(tess_ctrl_shd);
+    auto tess_eval_shd = std::make_shared<Shader>(SHADER_PATH + tess_eval_path, TESS_EVAL);
+    _shaders.push_back(tess_eval_shd);
+
+    has_tesselation = true;
+    glAttachShader(_index, tess_ctrl_shd->_index);
+    glAttachShader(_index, tess_eval_shd->_index);
+}
+
+void Program::attach_geometry_shader(const std::string& geo_path)
+{
+    if (_linked)
+    { 
+        std::cerr << "Program is already linked, can't add a new shader." << std::endl;
+        return; 
+    }
+
+    auto shd = std::make_shared<Shader>(SHADER_PATH + geo_path, GEO);
+    _shaders.push_back(shd);
+
+    has_geometry = true;
+    glAttachShader(_index, shd->_index);
+}
+
+void Program::attach_compute_shader(const std::string& compute_path)
+{
+    if (_linked)
+    { 
+        std::cerr << "Program is already linked, can't add a new shader." << std::endl;
+        return; 
+    }
+
+    auto shd = std::make_shared<Shader>(SHADER_PATH + compute_path, COMP);
+    _shaders.push_back(shd);
+
+    has_compute = true;
+    glAttachShader(_index, shd->_index);
 }
 
 void Program::link()
@@ -71,6 +114,36 @@ void Program::link()
     for (auto& shader : _shaders)
     {
         glDeleteShader(shader->_index);
+    }
+}
+
+GLuint Program::get_index()
+{
+    return _index;
+}
+
+void Program::set_uniform_float(const std::string& name, float v) const
+{
+    glProgramUniform1f(_index, glGetUniformLocation(_index, name.c_str()), v);
+}
+
+void Program::set_uniform_int(const std::string& name, int v) const
+{
+    glProgramUniform1i(_index, glGetUniformLocation(_index, name.c_str()), v);
+}
+
+void Program::set_lights(const std::vector<Light>& lights) const
+{
+    int n = lights.size();
+    set_uniform_int("nb_lights", n);
+    for (int i = 0; i < n; i++)
+    {
+        std::string p = "lights[" + std::to_string(i) + "].";
+        set_uniform_vec3(p + "pos", lights[i].pos);
+        set_uniform_vec3(p + "dir", lights[i].dir);
+        set_uniform_vec3(p + "color", lights[i].color);
+        set_uniform_float(p + "intensity", lights[i].intensity);
+        set_uniform_int(p + "type", lights[i].type);
     }
 }
 

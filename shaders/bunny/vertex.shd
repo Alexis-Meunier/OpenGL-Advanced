@@ -7,13 +7,14 @@ layout(location=0) out vec3 vs_color;
 layout(location=1) out vec3 vs_normal;
 layout(location=2) out vec3 vs_pos;
 
-vec3 object_color = vec3(0.12, 0.22, 0.8);
+vec3 object_color = vec3(0.27, 0.70, 0.1);
 
 uniform mat4 view;
 uniform mat4 proj;
+uniform mat4 model;
 
 void main() {
-  gl_Position = proj * view * vec4(position, 1.0);
+  gl_Position = proj * view * model * vec4(position, 1.0);
   vs_pos = gl_Position.xyz;
 
   vs_color = object_color;

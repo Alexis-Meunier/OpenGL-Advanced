@@ -48,6 +48,27 @@ matrix4 matrix4::identity()
     return mat;
 }
 
+matrix4 translation(const vec3& t)
+{
+    return matrix4({
+        {1.f, 0.f, 0.f, t.x},
+        {0.f, 1.f, 0.f, t.y},
+        {0.f, 0.f, 1.f, t.z},
+        {0.f, 0.f, 0.f, 1.f}
+    });
+}
+
+matrix4 scaling(const vec3& s)
+{
+    return matrix4({
+        {s.x, 0.f, 0.f, 0.f},
+        {0.f, s.y, 0.f, 0.f},
+        {0.f, 0.f, s.z, 0.f},
+        {0.f, 0.f, 0.f, 1.f}
+    });
+}
+
+
 std::ostream& operator<<(std::ostream& out, const matrix4& m)
 {
     for (auto& row : m.values)
@@ -65,6 +86,10 @@ std::ostream& operator<<(std::ostream& out, const matrix4& m)
 
 vec3::vec3(const GLfloat& x, const GLfloat& y, const GLfloat& z)
 : x(x), y(y), z(z)
+{}
+
+vec3::vec3(const GLfloat& x)
+: x(x), y(x), z(x)
 {}
 
 vec3 vec_prod(vec3& lhs, const vec3& rhs)

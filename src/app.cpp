@@ -12,6 +12,11 @@ static void cb_mouse(int b, int s, int x, int y)          { g_scene->on_mouse(b,
 static void cb_motion(int x, int y)                       { g_scene->on_motion(x, y); }
 static void cb_wheel(int w, int d, int x, int y)          { g_scene->on_wheel(w, d, x, y); }
 static void cb_keyboard(unsigned char c, int x, int y)    { g_scene->handle_keyboard(c, x, y); }
+static void cb_timer(int)
+{
+    if (g_scene) g_scene->animate(0.033f);
+    glutTimerFunc(33, cb_timer, 0);
+}
 
 void App::display()
 {
@@ -39,6 +44,7 @@ void App::render()
     glutMouseWheelFunc(cb_wheel);
     glutKeyboardFunc(cb_keyboard);
     glutReshapeFunc(cb_resize);
+    glutTimerFunc(33, cb_timer, 0);
     glutMainLoop();
 }
 

@@ -20,16 +20,17 @@ class App {
         void display();
 
     private:
-        App(const uint& width = 512, const uint& height = 512);
+        App(const uint& width, const uint& height);
         void init_glut(int &argc, char *argv[]);
         bool init_glew();
         void init_GL();
 
         std::shared_ptr<Scene> _scene;
-
         uint _width;
         uint _height;
+
         std::vector<Program> _programs;
+        float _anim_time = 0.0f;
 };
 
 #endif // APP_H

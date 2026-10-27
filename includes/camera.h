@@ -20,7 +20,7 @@ class Camera {
         void pan(float dx, float dy);
 
     private:
-    vec3 _target;
+        vec3 _target;
         matrix4 _view;
         matrix4 _proj;
         vec3 _pos;
