@@ -1,0 +1,54 @@
+#version 450
+
+#define NOISE_FACTOR 3.0
+
+layout( quads, equal_spacing, ccw ) in;
+
+in vec3 tsc_normals[];
+in vec3 tsc_color[];
+out vec3 fr_color;
+out vec3 fr_normal;
+out vec3 fr_pos;
+
+uniform float anim_time;
+uniform vec3 cameraPos;
+
+
+const vec2  WDIR[6]  = vec2[](vec2(0.96, 0.29), vec2(-0.60, 0.80), vec2(0.28, -0.96),
+                              vec2(-0.90, -0.44), vec2(0.70, 0.71), vec2(-0.20, 0.98));
+const float WFREQ[6] = float[](0.8, 1.3, 1.9, 2.7, 3.9, 5.3);
+const float WAMP[6]  = float[](0.35, 0.20, 0.12, 0.07, 0.04, 0.02);
+const float WSPD[6]  = float[](0.8, 1.0, 1.2, 1.5, 1.8, 2.2);
+
+float height(vec2 xz, float dist, out vec2 grad)
+{
+    float h = 0.0;
+    grad = vec2(0.0);
+    for (int i = 0; i < 6; i++)
+    {
+        float fade = clamp(1.0 - dist * WFREQ[i] * 0.004, 0.0, 1.0);
+        float ph = dot(WDIR[i], xz) * WFREQ[i] + anim_time * WSPD[i];
+        float a = WAMP[i] * fade;
+        h    += a * sin(ph);
+        grad += a * WFREQ[i] * cos(ph) * WDIR[i];
+    }
+    return h;
+}
+
+void main() {
+    vec4 p1 = mix(gl_in[0].gl_Position, gl_in[1].gl_Position, gl_TessCoord.x);
+    vec4 p2 = mix(gl_in[3].gl_Position, gl_in[2].gl_Position, gl_TessCoord.x);
+    vec4 p  = mix(p1, p2, gl_TessCoord.y);
+
+    vec2 g;
+    p.y += height(p.xz, distance(cameraPos, p.xyz), g);
+    vec3 n = normalize(vec3(-g.x, 1.0, -g.y));
+
+    vec3 c1 = mix(tsc_color[0], tsc_color[1], gl_TessCoord.x);
+    vec3 c2 = mix(tsc_color[3], tsc_color[2], gl_TessCoord.x);
+
+    gl_Position = p;
+    fr_normal = n;
+    fr_pos = p.xyz;
+    fr_color = mix(c1, c2, gl_TessCoord.y);
+}

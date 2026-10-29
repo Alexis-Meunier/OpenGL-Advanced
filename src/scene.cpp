@@ -204,14 +204,27 @@ std::vector<GLfloat> make_plane(int n)
 
 void Scene::add_tesselation_wave(const vec3& translation, const float& scale)
 {
-    auto tess_material = std::make_shared<Material>(Pipeline{"wave/vertex.shd", "wave/tess_control.shd", "wave/tess_evaluation.shd", "", "wave/fragment.shd", ""});
+    auto wave_mat = std::make_shared<Material>(Pipeline{"wave/vertex.shd", "wave/tess_control.shd", "wave/tess_evaluation.shd", "", "wave/fragment.shd", ""});
 
-    Object wave(make_plane(scale), make_plane_normals(scale), tess_material);
+    Object wave(make_plane(scale), make_plane_normals(scale), wave_mat);
     wave.translate(translation);
     wave.scale(scale);
 
     _objects.push_back(wave);
-    _programs.push_back(tess_material);
+    _programs.push_back(wave_mat);
+}
+
+void Scene::add_grass(const vec3& translation, const float& scale)
+{
+    auto ground_mat = std::make_shared<Material>(Pipeline{"grass/vertex.shd", "", "", "", "grass/fragment.shd", ""});
+    auto grass_mat = std::make_shared<Material>(Pipeline{"grass/vertex.shd", "grass/tess_control.shd", "grass/tess_evaluation.shd", "grass/geometry.shd", "grass/fragment.shd", ""});
+
+    Object grass(make_plane(scale), make_plane_normals(scale), grass_mat);
+    grass.translate(translation);
+    grass.scale(scale);
+
+    _objects.push_back(grass);
+    _programs.push_back(grass_mat);
 }
 
 std::shared_ptr<Scene> Scene::default_scene()
@@ -219,7 +232,8 @@ std::shared_ptr<Scene> Scene::default_scene()
     auto scene = std::make_shared<Scene>();
 
     scene->add_bunny({0.0}, {0.2});
-    scene->add_tesselation_wave({0.0}, 10.0);
+    scene->add_tesselation_wave({0.0}, 50.0);
+    // scene->add_grass({0.0}, 10.0);
 
     scene->_sun_idx = scene->_lights.size();
     scene->_lights.push_back(Light::directional(vec3(0.f, 1.f, 0.f), vec3(1.f, 1.f, 1.f), 1.f));
