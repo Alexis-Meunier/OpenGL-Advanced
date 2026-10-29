@@ -1,30 +1,134 @@
 #version 450
 
-layout( triangles ) in;
-layout( line_strip, max_vertices=10 ) out;
+layout(points) in;
+layout(triangle_strip, max_vertices = 7) out;
 
-out vec3 color_frag;
+in vec3 vs_pos[];
+in vec3 vs_rnd[];
 
-in vec3 color[3];
-in vec3 normal[3];
+out vec3  fr_pos;
+out vec3  fr_normal;
+out float fr_t; // 0 at the root, 1 at the tip
+out float fr_tint;
 
 uniform mat4 view;
 uniform mat4 proj;
+uniform vec3 cameraPos;
+uniform float anim_time;
+
+uniform sampler2D heightmap;
+uniform float terrain_size;
+uniform vec3  terrain_origin;
+uniform float water_level = 2.0; // blades below this are skipped
+
+const float BLADE_H = 0.45;
+const float BLADE_W = 0.035;
+const float MIN_UP = 0.75; // skip slopes steeper than this (terrain normal .y)
+
+uniform float terrain_amp;
+uniform float fade_in_start = -1.0; // fade-in range (0 for the near layer)
+uniform float fade_in_end = 0.0;
+uniform float fade_start = 5.0; // fade-out range
+uniform float fade_end = 20.0;
+uniform float width_scale = 1.0;
+uniform float height_scale = 1.0;
+
+float tint;
+
+float H(vec2 uv) {
+    return textureLod(heightmap, uv, 0.0).r * terrain_amp;
+}
+
+vec3 bez(vec3 a, vec3 b, vec3 c, float t) {
+    float u = 1.0 - t;
+    return u * u * a + 2.0 * u * t * b + t * t * c;
+}
+
+vec3 bez_tangent(vec3 a, vec3 b, vec3 c, float t) {
+    return 2.0 * (1.0 - t) * (b - a) + 2.0 * t * (c - b);
+}
+
+// true if the segment a-b (clip space) is fully outside one side of the frustum
+bool frustum_culled(vec4 a, vec4 b) {
+    const float M = 1.3; // margin for wind / blade width
+    if (a.w <= 0.0 && b.w <= 0.0)
+        return true; // both behind the camera
+    if (a.w <= 0.0 || b.w <= 0.0)
+        return false;
+    return (a.x >  M * a.w && b.x >  M * b.w) || (a.x < -M * a.w && b.x < -M * b.w)
+        || (a.y >  M * a.w && b.y >  M * b.w) || (a.y < -M * a.w && b.y < -M * b.w);
+}
+
+void emit(vec3 p, float t, vec3 n) {
+    fr_pos = p; fr_normal = n; fr_t = t; fr_tint = tint;
+    gl_Position = proj * view * vec4(p, 1.0);
+    EmitVertex();
+}
 
 void main() {
-    vec4 position = (gl_in[0].gl_Position + gl_in[1].gl_Position + gl_in[2].gl_Position) / 3.0;
-    vec3 centered_normal = (normal[0] + normal[1] + normal[2]) / 3.0;
-    float c = clamp(dot(normalize(light_pos - position.xyz), normalize(centered_normal)), 0.0, 1.0);
-    vec3 out_color = vec3(1.0 * c, (sin(c) + 1.0 / 2.0), c);
+    vec3 root = vs_pos[0];
+    vec3 rnd  = vs_rnd[0];
+    tint = rnd.y;
 
-    for (float i = 0.0; i < 10.0; i++)
-    {
-        color_frag = out_color;
-        float t = normal_length * i;
-        vec4 p = position + t * vec4(centered_normal, 1.0) + (1.0 / 2.0 * normalize(grav) * t * t );
-        gl_Position = proj * view * vec4(p.xyz, 1.0);
-        EmitVertex();
+    // inside the heightmap
+    vec2 uv = (root.xz - terrain_origin.xz) / terrain_size + 0.5;
+    if (any(lessThan(uv, vec2(0.002))) || any(greaterThan(uv, vec2(0.998))))
+        return;
+
+    float h = H(uv);
+    root.y = terrain_origin.y + h;
+
+    // distance LOD
+    float d = distance(cameraPos, root);
+    float fade_in  = clamp((d - fade_in_start) / (fade_in_end - fade_in_start), 0.0, 1.0);
+    float far_fade = smoothstep(fade_start, fade_end, d);
+    float fraction = fade_in * (1.0 - far_fade);
+    if (rnd.z >= fraction)
+        return;
+    float lod = far_fade; // 0 near, 1 far
+
+    // underwater
+    if (root.y < water_level) return;
+
+    // frustum culling
+    float height = BLADE_H * height_scale * (0.6 + 0.8 * rnd.y);
+    if (frustum_culled(proj * view * vec4(root, 1.0),
+                proj * view * vec4(root + vec3(0.0, height, 0.0), 1.0))) return;
+
+    // too steep
+    vec2 e = vec2(1.0 / textureSize(heightmap, 0).x, 0.0);
+    float dx = H(uv + e.xy) - H(uv - e.xy);
+    float dz = H(uv + e.yx) - H(uv - e.yx);
+    float ws = 2.0 * terrain_size * e.x;
+    if (normalize(vec3(-dx / ws, 1.0, -dz / ws)).y < MIN_UP) return;
+
+    // blade shape
+    float width = BLADE_W * width_scale * (1.0 + 2.0 * lod); // far blades are fewer, so wider
+    float ang = rnd.x * 6.2831853;
+    vec3 side = vec3(cos(ang), 0.0, sin(ang));
+    vec3 face = vec3(-side.z, 0.0, side.x);
+
+    // wind
+    vec2 wdir = normalize(vec2(1.0, 0.4));
+    float ph = dot(root.xz, wdir) * 0.6 - anim_time * 1.8;
+    float sway = 0.5 + 0.5 * sin(ph) + 0.15 * sin(ph * 2.3 + rnd.x * 6.28);
+    vec3 wind = vec3(wdir.x, 0.0, wdir.y) * sway * height * 0.4;
+
+    vec3 lean = face * (rnd.y - 0.5) * height * 0.5;
+    vec3 P0 = root - vec3(0.0, 0.02, 0.0); // sink the root slightly: the tessellated
+                                           // terrain is coarser than the heightmap
+    vec3 P1 = P0 + vec3(0.0, 0.6 * height, 0.0) + 0.5 * lean + 0.4 * wind;
+    vec3 P2 = P0 + vec3(0.0, height, 0.0) + lean + wind;
+
+    for (int i = 0; i < 3; i++) {
+        float t = float(i) / 3.0;
+        vec3 c = bez(P0, P1, P2, t);
+        float w = width * (1.0 - 0.75 * t);
+        vec3 n = normalize(cross(bez_tangent(P0, P1, P2, t), side));
+        emit(c - side * w, t, n);
+        emit(c + side * w, t, n);
     }
 
+    emit(P2, 1.0, normalize(cross(bez_tangent(P0, P1, P2, 1.0), side)));
     EndPrimitive();
 }

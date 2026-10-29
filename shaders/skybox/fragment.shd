@@ -16,11 +16,7 @@ float hash(vec3 p)
 }
 
 void main() {
-    // Rebuild the world-space view ray from the pixel position.
-    // proj[0][0] = 1/(aspect*tan(fov/2)), proj[1][1] = 1/tan(fov/2)
     vec3 vdir = normalize(vec3(ndc.x / proj[0][0], ndc.y / proj[1][1], -1.0));
-    // The rotation part of the view matrix is orthonormal: inverse == transpose.
-    // Ignoring the translation is what makes the sky look infinitely far away.
     vec3 dir = normalize(transpose(mat3(view)) * vdir);
 
     float day = smoothstep(-0.10, 0.25, sunDir.y);   // 0 = night, 1 = day

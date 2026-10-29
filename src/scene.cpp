@@ -5,6 +5,8 @@
 #include "bunny.h"
 #include "texture.h"
 
+static const float TERRAIN_AMP = 18.0f; 
+
 void Scene::update_camera()
 {
     _camera.update_camera();
@@ -235,6 +237,7 @@ void Scene::add_terrain(const vec3& translation, const float& scale)
         "", "terrain/fragment.shd", ""});
     mat->add_texture("heightmap", _heightmap_id);
     mat->set_float("terrain_size", scale);
+    mat->set_float("terrain_amp", TERRAIN_AMP);
 
     Object terrain(make_plane(scale), make_plane_normals(scale), mat);
     terrain.translate(translation);
@@ -244,17 +247,58 @@ void Scene::add_terrain(const vec3& translation, const float& scale)
     _programs.push_back(mat);
 }
 
-void Scene::add_grass(const vec3& translation, const float& scale)
+static std::vector<GLfloat> make_grass_tile(int n)
 {
-    auto ground_mat = std::make_shared<Material>(Pipeline{"grass/vertex.shd", "", "", "", "grass/fragment.shd", ""});
-    auto grass_mat = std::make_shared<Material>(Pipeline{"grass/vertex.shd", "grass/tess_control.shd", "grass/tess_evaluation.shd", "grass/geometry.shd", "grass/fragment.shd", ""});
+    std::vector<GLfloat> v;
+    v.reserve(n * n * 3);
+    for (int j = 0; j < n; j++)
+        for (int i = 0; i < n; i++)
+        {
+            v.push_back(float(i) / n);
+            v.push_back(0.f);
+            v.push_back(float(j) / n);
+        }
+    return v;
+}
+ 
+// Must be called AFTER add_terrain() (it needs _heightmap_id).
+void Scene::add_grass(const vec3& terrain_origin, const float& terrain_size)
+{
+    auto layer = [&](int cells, int grid, float tile,
+                    float in_start, float in_end,      // fade IN  (blades appear)
+                    float out_start, float out_end,    // fade OUT (blades thin out, then vanish)
+                    float width_scale, float height_scale)
+    {
+        auto mat = std::make_shared<Material>(Pipeline{
+            "grass/vertex.shd", "", "", "grass/geometry.shd", "grass/fragment.shd", ""});
+        mat->draw_type      = GL_POINTS;
+        mat->instance_count = grid * grid;
+        mat->cull_face      = false;
+        mat->add_texture("heightmap", _heightmap_id);
+ 
+        mat->set_float("terrain_size", terrain_size);
+        mat->set_float("terrain_amp", TERRAIN_AMP);
+        mat->set_vec3("terrain_origin", terrain_origin);
+ 
+        mat->set_int("grass_grid", grid);
+        mat->set_float("grass_tile", tile);
+        mat->set_float("grass_cells", cells);
+ 
+        mat->set_float("fade_in_start", in_start);
+        mat->set_float("fade_in_end", in_end);
+        mat->set_float("fade_start", out_start);
+        mat->set_float("fade_end", out_end);
+        mat->set_float("width_scale", width_scale);
+        mat->set_float("height_scale", height_scale);
+ 
+        Object o(make_grass_tile(cells), std::vector<GLfloat>(cells * cells * 3, 0.f), mat);
+        _objects.push_back(o);
+        _programs.push_back(mat);
+    };
 
-    Object grass(make_plane(scale), make_plane_normals(scale), grass_mat);
-    grass.translate(translation);
-    grass.scale(scale);
+    layer(40,   9,    4.0f,  -1.f,  0.f,   5.f,   14.f,  1.0f, 1.0f);   // near: dense, thin blades
+    layer(40,   5,   16.0f,   8.f, 14.f,  20.f,   30.f,  2.5f, 1.8f);   // far: sparse, big tufts
 
-    _objects.push_back(grass);
-    _programs.push_back(grass_mat);
 }
 
 std::shared_ptr<Scene> Scene::default_scene()
@@ -265,7 +309,7 @@ std::shared_ptr<Scene> Scene::default_scene()
     scene->add_terrain({0.0}, 50.0);
     // scene->add_bunny({0.0}, {0.2});
     scene->add_tesselation_wave({0.0, 2.0, 0.0}, 50.0);
-    // scene->add_grass({0.0}, 10.0);
+    scene->add_grass({0.0}, 50.0);
 
     scene->_sun_idx = scene->_lights.size();
     scene->_lights.push_back(Light::directional(vec3(0.f, 1.f, 0.f), vec3(1.f, 1.f, 1.f), 1.f));

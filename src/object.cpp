@@ -56,8 +56,11 @@ void Object::render(const matrix4& view, const matrix4& proj, const vec3& cam_po
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(1);
 
-    glDrawArrays(
-        _material->draw_type,
-        0,
-        _vertices.val.size() / 3);
+    // glDrawArrays(
+    //     _material->draw_type,
+    //     0,
+    //     _vertices.val.size() / 3);
+    glDrawArraysInstanced(_material->draw_type, 0,
+                            _vertices.val.size() / 3, _material->instance_count);
+
 }

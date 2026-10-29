@@ -7,7 +7,7 @@ uniform mat4 proj;
 uniform sampler2D heightmap;
 uniform float terrain_size;
 
-const float AMP = 18.0; // max height in world units
+uniform float terrain_amp;
 
 in vec2 tsc_uv[];
 out vec3 fr_pos;
@@ -15,7 +15,7 @@ out vec3 fr_normal;
 out float fr_height;
 
 float H(vec2 uv) {
-    return textureLod(heightmap, uv, 0.0).r * AMP;
+    return textureLod(heightmap, uv, 0.0).r * terrain_amp;
 }
 
 void main() {
@@ -37,6 +37,6 @@ void main() {
     fr_normal = normalize(vec3(-dx / world_step, 1.0, -dz / world_step));
 
     fr_pos = p.xyz;
-    fr_height = h / AMP;
+    fr_height = h / terrain_amp;
     gl_Position = proj * view * p;
 }

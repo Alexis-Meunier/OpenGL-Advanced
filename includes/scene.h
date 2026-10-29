@@ -37,10 +37,10 @@ class Scene {
         void set_time_of_day(float hours);
         void advance_time(float dh);
         void add_bunny(const vec3& translation = vec3(0.0), const vec3& scale = vec3(0.0));
-        void add_grass(const vec3& translation = vec3(0.0), const float& scale = 1.0f);
         void add_tesselation_wave(const vec3& translation = vec3(0.0), const float& scale = 1.0f);
         void add_skybox();
         void add_terrain(const vec3& translation, const float& scale);
+        void add_grass(const vec3& terrain_origin, const float& terrain_size);
 
     private:
         float _anim_time = 0.f;

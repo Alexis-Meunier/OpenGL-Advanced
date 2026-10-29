@@ -69,6 +69,10 @@ void Material::add_texture(const std::string& uniform, GLuint id)
 void Material::bind() const
 {
     // TODO: Set drawing parameters such as blend etc...
+    if (cull_face)
+        glEnable(GL_CULL_FACE);
+    else
+        glDisable(GL_CULL_FACE);
 
     // TODO:
     // for (const auto& [h, v] : _uniforms)

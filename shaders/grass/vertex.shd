@@ -1,17 +1,37 @@
 #version 450
 
-in vec3 position;
-in vec3 normalSmooth;
+layout(location=0) in vec3 tile_cell;
 
-out vec3 vs_color;
-out vec3 vs_normal;
+out vec3 vs_pos;
+out vec3 vs_rnd;
 
-vec3 object_color = vec3(0.12, 0.22, 0.8);
-uniform mat4 model;
+uniform vec3 cameraPos;
+
+uniform int grass_grid;// GRID x GRID tiles around the camera
+uniform float grass_tile; // world size of one tile
+uniform float grass_cells; // points per tile side (must match the C++ buffer)
+
+float hash12(vec2 p) {
+    vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
+vec2 hash22(vec2 p) {
+    vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.xx + p3.yz) * p3.zy);
+}
 
 void main() {
-  gl_Position = model * vec4(position, 1.0);
+    ivec2 t = ivec2(gl_InstanceID % grass_grid, gl_InstanceID / grass_grid) - grass_grid / 2;
+    vec2 tile_idx = floor(cameraPos.xz / grass_tile) + vec2(t);
 
-  vs_color = object_color;
-  vs_normal = normalSmooth;
+    vec2 cell = floor(tile_cell.xz * grass_cells + 0.5);
+    vec2 id = tile_idx * grass_cells + cell;
+
+    vec2 xz = (id + hash22(id)) * (grass_tile / grass_cells);
+
+    vs_pos = vec3(xz.x, 0.0, xz.y);
+    vs_rnd = vec3(hash12(id + 17.0), hash12(id + 31.0), hash12(id + 47.0));
 }

@@ -36,6 +36,8 @@ class Material {
         void add_texture(const std::string& uniform, GLuint id);
 
         GLuint draw_type = GL_TRIANGLES;
+        int instance_count = 1;
+        bool cull_face = true;
     private:
         std::shared_ptr<Program> _program;
         std::vector<std::pair<std::string, GLuint>> _textures;
