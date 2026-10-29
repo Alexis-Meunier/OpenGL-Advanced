@@ -1,7 +1,7 @@
 CC = g++
 
 # SRCS = src/main.cpp src/matrix.cpp
-SRCS = src/app.cpp src/main.cpp src/material.cpp src/object.cpp src/program.cpp src/scene.cpp src/shader.cpp src/matrix.cpp src/camera.cpp src/light.cpp
+SRCS = src/app.cpp src/main.cpp src/material.cpp src/object.cpp src/program.cpp src/scene.cpp src/shader.cpp src/matrix.cpp src/camera.cpp src/light.cpp src/skybox.cpp src/texture.cpp
 OBJS = $(SRCS:.cpp=.o)
 
 CFLAGS = -Wall -Wextra -O3 -g -std=c++20

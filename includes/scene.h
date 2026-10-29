@@ -5,6 +5,7 @@
 #include <memory>
 #include <vector>
 
+#include "skybox.h"
 #include "light.h"
 #include "material.h"
 #include "matrix.h"
@@ -36,7 +37,10 @@ class Scene {
         void set_time_of_day(float hours);
         void advance_time(float dh);
         void add_bunny(const vec3& translation = vec3(0.0), const vec3& scale = vec3(0.0));
+        void add_grass(const vec3& translation = vec3(0.0), const float& scale = 1.0f);
         void add_tesselation_wave(const vec3& translation = vec3(0.0), const float& scale = 1.0f);
+        void add_skybox();
+        void add_terrain(const vec3& translation, const float& scale);
 
     private:
         float _anim_time = 0.f;
@@ -53,6 +57,9 @@ class Scene {
         std::vector<Light> _lights;
         float _time_of_day = 12.f;
         size_t _sun_idx = 0;
+
+        std::shared_ptr<Skybox> _skybox;
+        GLuint _heightmap_id;
 };
 
 #endif // SCENE_H

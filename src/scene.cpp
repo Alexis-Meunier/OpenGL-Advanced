@@ -3,6 +3,7 @@
 #include <cmath>
 
 #include "bunny.h"
+#include "texture.h"
 
 void Scene::update_camera()
 {
@@ -114,6 +115,12 @@ void Scene::add_light(const Light& light)
 
 void Scene::render()
 {
+    if (_skybox)
+    {
+        const Light& sun = _lights[_sun_idx];
+        _skybox->render(_camera.get_view_matrix(), _camera.get_proj_matrix(), sun.dir, sun.color);
+    }
+
     for (const auto& obj : _objects)
         obj.render(_camera.get_view_matrix(), _camera.get_proj_matrix(), _camera.get_pos(), _anim_time, _nb_divisions, _middle_divisions, _lights);
 }
@@ -169,6 +176,11 @@ void Scene::advance_time(float dh)
     set_time_of_day(_time_of_day + dh);
 }
 
+void Scene::add_skybox()
+{
+    _skybox = std::make_shared<Skybox>();
+}
+
 void Scene::add_bunny(const vec3& translation, const vec3& scale)
 {
     auto base_material = std::make_shared<Material>(Pipeline{"bunny/vertex.shd", "", "", "", "bunny/fragment.shd", ""});
@@ -214,6 +226,24 @@ void Scene::add_tesselation_wave(const vec3& translation, const float& scale)
     _programs.push_back(wave_mat);
 }
 
+void Scene::add_terrain(const vec3& translation, const float& scale)
+{
+    _heightmap_id = Texture::generate_heightmap(1024).id;
+
+    auto mat = std::make_shared<Material>(Pipeline{
+        "terrain/vertex.shd", "terrain/tess_control.shd", "terrain/tess_evaluation.shd",
+        "", "terrain/fragment.shd", ""});
+    mat->add_texture("heightmap", _heightmap_id);
+    mat->set_float("terrain_size", scale);
+
+    Object terrain(make_plane(scale), make_plane_normals(scale), mat);
+    terrain.translate(translation);
+    terrain.scale(scale);
+
+    _objects.push_back(terrain);
+    _programs.push_back(mat);
+}
+
 void Scene::add_grass(const vec3& translation, const float& scale)
 {
     auto ground_mat = std::make_shared<Material>(Pipeline{"grass/vertex.shd", "", "", "", "grass/fragment.shd", ""});
@@ -231,8 +261,10 @@ std::shared_ptr<Scene> Scene::default_scene()
 {
     auto scene = std::make_shared<Scene>();
 
-    scene->add_bunny({0.0}, {0.2});
-    scene->add_tesselation_wave({0.0}, 50.0);
+    scene->add_skybox();
+    scene->add_terrain({0.0}, 50.0);
+    // scene->add_bunny({0.0}, {0.2});
+    scene->add_tesselation_wave({0.0, 2.0, 0.0}, 50.0);
     // scene->add_grass({0.0}, 10.0);
 
     scene->_sun_idx = scene->_lights.size();

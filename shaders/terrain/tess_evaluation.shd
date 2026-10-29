@@ -1,0 +1,42 @@
+#version 450
+
+layout(quads, equal_spacing, ccw) in;
+
+uniform mat4 view;
+uniform mat4 proj;
+uniform sampler2D heightmap;
+uniform float terrain_size;
+
+const float AMP = 18.0; // max height in world units
+
+in vec2 tsc_uv[];
+out vec3 fr_pos;
+out vec3 fr_normal;
+out float fr_height;
+
+float H(vec2 uv) {
+    return textureLod(heightmap, uv, 0.0).r * AMP;
+}
+
+void main() {
+    vec4 p1 = mix(gl_in[0].gl_Position, gl_in[1].gl_Position, gl_TessCoord.x);
+    vec4 p2 = mix(gl_in[3].gl_Position, gl_in[2].gl_Position, gl_TessCoord.x);
+    vec4 p  = mix(p1, p2, gl_TessCoord.y);
+
+    vec2 u1 = mix(tsc_uv[0], tsc_uv[1], gl_TessCoord.x);
+    vec2 u2 = mix(tsc_uv[3], tsc_uv[2], gl_TessCoord.x);
+    vec2 uv = mix(u1, u2, gl_TessCoord.y);
+
+    float h = H(uv);
+    p.y += h;
+
+    vec2 e = vec2(1.0 / textureSize(heightmap, 0).x, 0.0);
+    float dx = H(uv + e.xy) - H(uv - e.xy);
+    float dz = H(uv + e.yx) - H(uv - e.yx);
+    float world_step = 2.0 * terrain_size * e.x;
+    fr_normal = normalize(vec3(-dx / world_step, 1.0, -dz / world_step));
+
+    fr_pos = p.xyz;
+    fr_height = h / AMP;
+    gl_Position = proj * view * p;
+}

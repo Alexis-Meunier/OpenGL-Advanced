@@ -3,8 +3,11 @@
 Material::Material(const Pipeline& shaders)
 {
     _program = std::make_shared<Program>();
-    _program->attach_shader(shaders.vrtx_path, VERT);
-    _program->attach_shader(shaders.frag_path, FRAG);
+    if (!shaders.vrtx_path.empty())
+        _program->attach_shader(shaders.vrtx_path, VERT);
+    if (!shaders.frag_path.empty())
+        _program->attach_shader(shaders.frag_path, FRAG);
+
     if (!shaders.tess_ctrl_path.empty() && !shaders.tess_eval_path.empty())
     {
         draw_type = GL_PATCHES;
@@ -58,6 +61,11 @@ void Material::set_vec3(const std::string& name, const vec3& v) const
     _program->set_uniform_vec3(name, v);
 }
 
+void Material::add_texture(const std::string& uniform, GLuint id)
+{
+    _textures.push_back({uniform, id});
+}
+
 void Material::bind() const
 {
     // TODO: Set drawing parameters such as blend etc...
@@ -68,4 +76,10 @@ void Material::bind() const
     //     _program->set_uniform("intensity");
     // }
     _program->bind();
+    for (size_t i = 0; i < _textures.size(); i++)
+    {
+        glActiveTexture(GL_TEXTURE0 + i);
+        glBindTexture(GL_TEXTURE_2D, _textures[i].second);
+        _program->set_uniform_int(_textures[i].first, i);
+    }
 }

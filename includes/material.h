@@ -33,10 +33,12 @@ class Material {
 
         bool is_compute();
         bool is_tesselation();
+        void add_texture(const std::string& uniform, GLuint id);
 
         GLuint draw_type = GL_TRIANGLES;
     private:
         std::shared_ptr<Program> _program;
+        std::vector<std::pair<std::string, GLuint>> _textures;
 };
 
 #endif // MATERIAL_H
