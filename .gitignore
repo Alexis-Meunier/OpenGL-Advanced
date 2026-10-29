@@ -3,3 +3,5 @@ main
 *.direnv
 *.tar*
 *.envrc
+*.tgz
+*TODO*
