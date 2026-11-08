@@ -1,0 +1,11 @@
+#version 450
+
+layout(location=0) out vec4 out_color;
+
+uniform vec3  emissive_color;
+uniform float emissive_intensity;
+
+void main()
+{
+    out_color = vec4(emissive_color * emissive_intensity, 1.0);
+}

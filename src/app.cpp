@@ -20,8 +20,9 @@ static void cb_timer(int)
 
 void App::display()
 {
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    g_scene->begin_frame();
     g_scene->render();
+    g_scene->render_light_bloom();
     glutSwapBuffers();
     glutPostRedisplay();
 }

@@ -1,14 +1,13 @@
 #version 450
 
-// One invocation = one texel. Dispatched ONCE at startup, not every frame.
 layout(local_size_x = 16, local_size_y = 16) in;
 
 layout(binding = 1, r32f) uniform writeonly image2D heightmap_out;
 
-const int   OCTAVES    = 6;
-const float BASE_FREQ  = 3.0;    // number of "big hills" across the map
+const int OCTAVES = 6;
+const float BASE_FREQ = 3.0;    // number of "big hills" across the map
 const float LACUNARITY = 2.0;
-const float GAIN       = 0.5;
+const float GAIN = 0.5;
 
 float hash(vec2 p) {
     p = fract(p * vec2(123.34, 456.21));
@@ -16,7 +15,6 @@ float hash(vec2 p) {
     return fract(p.x * p.y);
 }
 
-// Value noise with a quintic fade: smooth, in [0, 1]
 float noise(vec2 p) {
     vec2 i = floor(p);
     vec2 f = fract(p);
@@ -45,7 +43,7 @@ float fbm(vec2 st) {
 }
 
 void main() {
-    ivec2 px   = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 px = ivec2(gl_GlobalInvocationID.xy);
     ivec2 size = imageSize(heightmap_out);
     if (px.x >= size.x || px.y >= size.y) return;
 

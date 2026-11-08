@@ -18,6 +18,19 @@ struct Light {
 uniform Light lights[MAX_LIGHTS];
 uniform int nb_lights;
 
+// Point lights only reach a limited distance, so each one stays local and
+// the colours of different lights don't pile up everywhere. The sun has no falloff.
+#define LIGHT_RANGE 12.0
+float attenuation(Light l, vec3 p)
+{
+    if (l.type == 1)
+        return 1.0;
+    float d = length(l.pos - p);
+    float window = clamp(1.0 - pow(d / LIGHT_RANGE, 4.0), 0.0, 1.0);
+    return window * window / (1.0 + 0.5 * d * d);
+}
+
+
 void main() {
     vec3 N = normalize(fr_normal);
 
@@ -28,14 +41,13 @@ void main() {
     vec3 albedo = mix(sand, grass, smoothstep(0.05, 0.20, fr_height));
     albedo = mix(albedo, rock, 1.0 - smoothstep(0.55, 0.75, N.y));
 
-    // DEBUG: uncomment to see the raw heightmap
     // out_color = vec4(vec3(fr_height), 1.0); return;
 
     vec3 color = 0.08 * albedo; // ambient
     for (int i = 0; i < nb_lights; i++) {
         vec3 L = (lights[i].type == 1) ? normalize(lights[i].dir)
                                        : normalize(lights[i].pos - fr_pos);
-        color += albedo * lights[i].color * lights[i].intensity * max(dot(N, L), 0.0);
+        color += albedo * lights[i].color * lights[i].intensity * attenuation(lights[i], fr_pos) * max(dot(N, L), 0.0);
     }
     out_color = vec4(color, 1.0);
 }

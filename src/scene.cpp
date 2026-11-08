@@ -1,9 +1,11 @@
 #include "scene.h"
 
+#include <algorithm>
 #include <cmath>
 
 #include "bunny.h"
 #include "texture.h"
+#include "primitives.h"
 
 static const float TERRAIN_AMP = 18.0f; 
 
@@ -15,6 +17,21 @@ void Scene::update_camera()
 void Scene::window_resize(int width, int height) {
     glViewport(0, 0, width, height);
     _camera.update_proj(width, height);
+    _bloom.resize(width, height);
+}
+
+void Scene::begin_frame()
+{
+    if (display_bloom)
+        _bloom.bind_scene();
+    else
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+void Scene::render_light_bloom()
+{
+    if (display_bloom)
+        _bloom.apply();
 }
 
 void Scene::on_mouse(int button, int state, int x, int y)
@@ -94,6 +111,9 @@ void Scene::handle_keyboard(unsigned char c, int x, int y)
             break;
         case '+': advance_time(0.25f); break;
         case '-': advance_time(-0.25f); break;
+        case 'b':
+            display_bloom = !display_bloom;
+            break;
         case 27: exit(0);
     }
     
@@ -165,7 +185,7 @@ void Scene::set_time_of_day(float hours)
 
     t = t * t * (3.f - 2.f * t);
     sun.dir = d;
-    sun.color = vec3(1.0f + (1.0f - 1.0f) * t,
+    sun.color = vec3(1.0f,
                     0.30f + 0.66f * t,
                     0.08f + 0.82f * t);
 
@@ -197,8 +217,13 @@ void Scene::add_bunny(const vec3& translation, const vec3& scale)
 
 std::vector<GLfloat> make_plane_normals(int n)
 {
+    // Height x Width x corners x vector_dim
     std::vector<GLfloat> v(n * n * 4 * 3, 0.f);
-    for (size_t i = 1; i < v.size(); i += 3) v[i] = 1.f;
+    for (size_t i = 1; i < v.size(); i += 3)
+    {
+        v[i] = 1.f; // Only set the middle to one because it's a plane
+    }
+
     return v;
 }
 
@@ -207,12 +232,20 @@ std::vector<GLfloat> make_plane(int n)
     std::vector<GLfloat> v;
     float s = 1.f / n;
     for (int j = 0; j < n; j++)
+    {
         for (int i = 0; i < n; i++)
         {
             float x = -0.5f + i * s, z = -0.5f + j * s;
             float q[4][2] = { {x, z}, {x, z + s}, {x + s, z + s}, {x + s, z} };
-            for (auto& c : q) { v.push_back(c[0]); v.push_back(0.f); v.push_back(c[1]); }
+            for (auto& c : q)
+            {
+                v.push_back(c[0]);
+                v.push_back(0.f);
+                v.push_back(c[1]);
+            }
         }
+    }
+
     return v;
 }
 
@@ -245,6 +278,7 @@ void Scene::add_terrain(const vec3& translation, const float& scale)
 
     _objects.push_back(terrain);
     _programs.push_back(mat);
+    _terrain_size = scale;
 }
 
 static std::vector<GLfloat> make_grass_tile(int n)
@@ -261,19 +295,18 @@ static std::vector<GLfloat> make_grass_tile(int n)
     return v;
 }
  
-// Must be called AFTER add_terrain() (it needs _heightmap_id).
 void Scene::add_grass(const vec3& terrain_origin, const float& terrain_size)
 {
     auto layer = [&](int cells, int grid, float tile,
-                    float in_start, float in_end,      // fade IN  (blades appear)
-                    float out_start, float out_end,    // fade OUT (blades thin out, then vanish)
+                    float in_start, float in_end, // fade IN  (blades appear)
+                    float out_start, float out_end, // fade OUT (blades thin out, then vanish)
                     float width_scale, float height_scale)
     {
         auto mat = std::make_shared<Material>(Pipeline{
             "grass/vertex.shd", "", "", "grass/geometry.shd", "grass/fragment.shd", ""});
-        mat->draw_type      = GL_POINTS;
+        mat->draw_type = GL_POINTS;
         mat->instance_count = grid * grid;
-        mat->cull_face      = false;
+        mat->cull_face = false;
         mat->add_texture("heightmap", _heightmap_id);
  
         mat->set_float("terrain_size", terrain_size);
@@ -296,9 +329,50 @@ void Scene::add_grass(const vec3& terrain_origin, const float& terrain_size)
         _programs.push_back(mat);
     };
 
-    layer(40,   9,    4.0f,  -1.f,  0.f,   5.f,   14.f,  1.0f, 1.0f);   // near: dense, thin blades
-    layer(40,   5,   16.0f,   8.f, 14.f,  20.f,   30.f,  2.5f, 1.8f);   // far: sparse, big tufts
+    layer(40, 9, 4.0f, -1.f, 0.f, 5.f, 14.f, 1.0f, 1.0f); // near: dense, thin blades
+    layer(40, 5, 16.0f, 8.f, 14.f, 20.f, 30.f, 2.5f, 1.8f); // far: sparse, big tufts
+}
 
+float Scene::terrain_height(float x, float z)
+{
+    const int n = 1024;
+    if (_height_cpu.empty())
+    {
+        _height_cpu.resize(n * n);
+        glMemoryBarrier(GL_ALL_BARRIER_BITS);
+        glGetTextureImage(_heightmap_id, 0, GL_RED, GL_FLOAT,
+                          n * n * sizeof(float), _height_cpu.data());
+    }
+
+    float u = std::min(std::max(x / _terrain_size + 0.5f, 0.f), 0.9999f);
+    float v = std::min(std::max(z / _terrain_size + 0.5f, 0.f), 0.9999f);
+    return _height_cpu[int(v * n) * n + int(u * n)] * TERRAIN_AMP;
+}
+
+void Scene::add_glowing_light(bool cube, float x, float z, float hover, float size,
+                              const vec3& color, float glow, float light_intensity)
+{
+    float ground = std::max(terrain_height(x, z), 2.0f);
+    vec3 pos(x, ground + hover, z);
+
+    auto mat = std::make_shared<Material>(Pipeline{
+        "emissive/vertex.shd", "", "", "", "emissive/fragment.shd", ""});
+    mat->set_vec3("emissive_color", color);
+    mat->set_float("emissive_intensity", glow);
+
+    std::vector<GLfloat> verts, normals;
+    if (cube)
+        make_cube_mesh(verts, normals);
+    else
+        make_sphere_mesh(verts, normals, 16, 32);
+
+    Object o(verts, normals, mat);
+    o.translate(pos);
+    o.scale(vec3(size, size, size));
+    _objects.push_back(o);
+    _programs.push_back(mat);
+
+    add_light(Light(pos, color, light_intensity));
 }
 
 std::shared_ptr<Scene> Scene::default_scene()
@@ -314,6 +388,9 @@ std::shared_ptr<Scene> Scene::default_scene()
     scene->_sun_idx = scene->_lights.size();
     scene->_lights.push_back(Light::directional(vec3(0.f, 1.f, 0.f), vec3(1.f, 1.f, 1.f), 1.f));
     scene->set_time_of_day(10.f);
+    scene->add_glowing_light(false, 5.2f, 7.7f, 1.5f, 0.8f, vec3(1.0f, 0.45f, 0.1f), 3.f, 3.f);
+    scene->add_glowing_light(true, -6.f, 8.2f, 1.0f, 0.9f, vec3(0.2f, 0.70f, 1.0f), 3.f, 6.f);
+    scene->add_glowing_light(false, 0.f, -6.f, 2.0f, 0.5f, vec3(1.0f, 0.20f, 0.7f), 3.f, 2.f);
 
     return scene;
 }

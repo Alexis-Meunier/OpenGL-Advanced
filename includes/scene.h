@@ -11,6 +11,14 @@
 #include "matrix.h"
 #include "object.h"
 #include "camera.h"
+#include "bloom.h"
+
+struct bloomMIP
+{
+    float size[2];
+    int isize[2];
+    GLuint texture_id;
+};
 
 class Scene {
     public:
@@ -26,6 +34,8 @@ class Scene {
         void on_wheel(int w, int d, int x, int y);
         void handle_keyboard(unsigned char c, int x, int y);
         void animate(float dt);
+        void begin_frame();
+        void render_light_bloom();
 
         void increment_outer_divisions();
         void increment_inner_divisions();
@@ -41,6 +51,10 @@ class Scene {
         void add_skybox();
         void add_terrain(const vec3& translation, const float& scale);
         void add_grass(const vec3& terrain_origin, const float& terrain_size);
+
+        void add_glowing_light(bool cube, float x, float z, float hover, float size,
+                              const vec3& color, float glow, float light_intensity);
+        float terrain_height(float x, float z);
 
     private:
         float _anim_time = 0.f;
@@ -60,6 +74,12 @@ class Scene {
 
         std::shared_ptr<Skybox> _skybox;
         GLuint _heightmap_id;
+
+        Bloom _bloom;
+        bool display_bloom = true;
+
+        std::vector<float> _height_cpu;
+        float _terrain_size;
 };
 
 #endif // SCENE_H

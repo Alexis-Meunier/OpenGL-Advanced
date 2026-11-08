@@ -19,6 +19,19 @@ struct Light {
 uniform Light lights[MAX_LIGHTS];
 uniform int nb_lights;
 
+// Point lights only reach a limited distance, so each one stays local and
+// the colours of different lights don't pile up everywhere. The sun has no falloff.
+#define LIGHT_RANGE 12.0
+float attenuation(Light l, vec3 p)
+{
+    if (l.type == 1)
+        return 1.0;
+    float d = length(l.pos - p);
+    float window = clamp(1.0 - pow(d / LIGHT_RANGE, 4.0), 0.0, 1.0);
+    return window * window / (1.0 + 0.5 * d * d);
+}
+
+
 uniform vec3 cameraPos;
 
 vec3 V = vec3(0.0);
@@ -52,7 +65,9 @@ void main() {
     float NdotV = max(cdot(N, V), 1e-4);
 
     vec3 sun_col = lights[0].color * lights[0].intensity;
-    vec3 color = 0.15 * fr_color * (0.4 + 0.6 * sun_col);
+    // 0 at night, 1 in daylight (same curve as the skybox)
+    float day = smoothstep(-0.10, 0.25, lights[0].dir.y);
+    vec3 color = 0.15 * fr_color * (mix(0.05, 0.4, day) + 0.6 * sun_col);
     for (int i = 0; i < nb_lights; i++)
     {
         vec3 L = (lights[i].type == 1)
@@ -70,10 +85,13 @@ void main() {
         vec3 specular = F * D * G / max(4.0 * NdotV * NdotL, 1e-4);
         vec3 diffuse  = (1.0 - F) * fr_color;
 
-        color += (diffuse + specular) * lights[i].color * lights[i].intensity * NdotL;
+        color += (diffuse + specular) * lights[i].color * lights[i].intensity * attenuation(lights[i], fr_pos) * NdotL;
     }
 
-    vec3 sky = mix(vec3(0.5, 0.7, 1.0), sun_col, 0.6);
+    // What the water reflects: the daytime sky, fading to the dark night sky.
+    vec3 day_sky   = mix(vec3(0.5, 0.7, 1.0), sun_col, 0.6);
+    vec3 night_sky = vec3(0.04, 0.05, 0.10);
+    vec3 sky = mix(night_sky, day_sky, day);
     float fr = pow(1.0 - NdotV, 5.0);
     color = mix(color, sky, 0.04 + 0.9 * fr);
     out_color = vec4(color, 1.0);

@@ -48,11 +48,10 @@ vec3 bez_tangent(vec3 a, vec3 b, vec3 c, float t) {
     return 2.0 * (1.0 - t) * (b - a) + 2.0 * t * (c - b);
 }
 
-// true if the segment a-b (clip space) is fully outside one side of the frustum
 bool frustum_culled(vec4 a, vec4 b) {
     const float M = 1.3; // margin for wind / blade width
     if (a.w <= 0.0 && b.w <= 0.0)
-        return true; // both behind the camera
+        return true;
     if (a.w <= 0.0 || b.w <= 0.0)
         return false;
     return (a.x >  M * a.w && b.x >  M * b.w) || (a.x < -M * a.w && b.x < -M * b.w)
