@@ -13,13 +13,6 @@
 #include "camera.h"
 #include "bloom.h"
 
-struct bloomMIP
-{
-    float size[2];
-    int isize[2];
-    GLuint texture_id;
-};
-
 class Scene {
     public:
         Scene() = default;
@@ -53,10 +46,14 @@ class Scene {
         void add_grass(const vec3& terrain_origin, const float& terrain_size);
 
         void add_glowing_light(bool cube, float x, float z, float hover, float size,
-                              const vec3& color, float glow, float light_intensity);
+                            const vec3& color, float glow, float light_intensity);
         float terrain_height(float x, float z);
 
     private:
+        void wave_movement(float dt);
+
+        static constexpr int N_WAVES = 8;
+
         float _anim_time = 0.f;
         std::vector<Object> _objects;
         std::vector<std::shared_ptr<Material>> _programs;
@@ -73,13 +70,25 @@ class Scene {
         size_t _sun_idx = 0;
 
         std::shared_ptr<Skybox> _skybox;
-        GLuint _heightmap_id;
+        GLuint _heightmap_id = 0;
 
         Bloom _bloom;
-        bool display_bloom = true;
+        bool display_bloom = false;
 
         std::vector<float> _height_cpu;
-        float _terrain_size;
+        float _terrain_size = 50.f;
+
+        float _wind_angle = 0.4f;
+        float _target_angle = 0.4f; // radians
+        float _wind_speed = 4.5f;
+        float _target_speed = 4.5f; // m/s
+        float _wind_phase = 0.f;
+
+        float _wave_phase[N_WAVES] = {};
+        float _wave_size = 50.f;
+        GLuint _wave_tex = 0;
+        std::shared_ptr<Material> _wave_compute;
+        std::vector<std::shared_ptr<Material>> _grass_mats;
 };
 
 #endif // SCENE_H

@@ -1,0 +1,63 @@
+#version 450
+
+layout(local_size_x = 8, local_size_y = 8) in;
+
+// image unit 2 (must match glBindImageTexture(2, ...) in Scene::wave_movement)
+layout(binding = 2, rgba32f) uniform writeonly image2D wave_tex;
+
+#define MAX_WAVES 8
+
+uniform int   nb_waves;
+uniform float plane_size;
+uniform float anim_time;
+uniform vec3  wind_dir;            // (x, 0, z), normalized
+uniform vec3  wave_dk[MAX_WAVES];  // xy = direction in (x, z), z = wavenumber k
+uniform vec3  wave_ap[MAX_WAVES];  // x = amplitude, y = accumulated phase
+
+// keep these identical to the ones in the grass shader so gusts match
+float hash(vec2 p) {
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return fract(p.x * p.y);
+}
+
+float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+
+    float a = hash(i);
+    float b = hash(i + vec2(1.0, 0.0));
+    float c = hash(i + vec2(0.0, 1.0));
+    float d = hash(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+
+void main()
+{
+    ivec2 px   = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(wave_tex);
+    if (any(greaterThanEqual(px, size)))
+        return; // dispatch is rounded up to a multiple of 8
+
+    // world xz of this texel (plane centred on the origin)
+    vec2 xz = ((vec2(px) + 0.5) / vec2(size) - 0.5) * plane_size;
+
+    // gusts: a smooth noise field sliding along the wind
+    float gust = 0.7 + 0.3 * noise(xz * 0.05 - wind_dir.xz * anim_time * 0.5);
+
+    float h = 0.0;
+    vec2 grad = vec2(0.0);
+    for (int i = 0; i < nb_waves; i++)
+    {
+        vec2  d  = wave_dk[i].xy;
+        float k  = wave_dk[i].z;
+        float a  = wave_ap[i].x * gust;
+        float ph = dot(d, xz) * k - wave_ap[i].y; // minus: the wave travels along d
+
+        h    += a * sin(ph);
+        grad += a * k * cos(ph) * d;
+    }
+
+    imageStore(wave_tex, px, vec4(h, grad.x, grad.y, 0.0));
+}

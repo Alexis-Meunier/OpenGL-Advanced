@@ -33,7 +33,30 @@ uniform float fade_end = 20.0;
 uniform float width_scale = 1.0;
 uniform float height_scale = 1.0;
 
+uniform vec3  wind_dir;
+uniform float wind_speed;
+uniform float wind_phase;
+
 float tint;
+
+
+float hash(vec2 p) {
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return fract(p.x * p.y);
+}
+
+float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+
+    float a = hash(i);
+    float b = hash(i + vec2(1.0, 0.0));
+    float c = hash(i + vec2(0.0, 1.0));
+    float d = hash(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
 
 float H(vec2 uv) {
     return textureLod(heightmap, uv, 0.0).r * terrain_amp;
@@ -108,10 +131,12 @@ void main() {
     vec3 face = vec3(-side.z, 0.0, side.x);
 
     // wind
-    vec2 wdir = normalize(vec2(1.0, 0.4));
-    float ph = dot(root.xz, wdir) * 0.6 - anim_time * 1.8;
+    float gust = 0.7 + 0.3 * noise(root.xz * 0.05 - wind_dir.xz * anim_time * 0.5);
+    float strength = clamp(wind_speed / 8.0, 0.0, 1.0) * gust;
+
+    float ph = dot(root.xz, wind_dir.xz) * 0.6 - wind_phase;
     float sway = 0.5 + 0.5 * sin(ph) + 0.15 * sin(ph * 2.3 + rnd.x * 6.28);
-    vec3 wind = vec3(wdir.x, 0.0, wdir.y) * sway * height * 0.4;
+    vec3 wind = vec3(wind_dir.x, 0, wind_dir.z) * sway * height * 0.4 * strength;
 
     vec3 lean = face * (rnd.y - 0.5) * height * 0.5;
     vec3 P0 = root - vec3(0.0, 0.02, 0.0); // sink the root slightly: the tessellated

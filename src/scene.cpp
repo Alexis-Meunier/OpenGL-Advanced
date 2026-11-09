@@ -7,7 +7,21 @@
 #include "texture.h"
 #include "primitives.h"
 
-static const float TERRAIN_AMP = 18.0f; 
+static const float TERRAIN_AMP = 18.0f;
+static const int WAVE_RES = 1024;
+
+static GLuint make_wave_texture(int size)
+{
+    GLuint id;
+    glGenTextures(1, &id);
+    glBindTexture(GL_TEXTURE_2D, id);
+    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, size, size);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    return id;
+}
 
 void Scene::update_camera()
 {
@@ -80,23 +94,10 @@ void Scene::handle_keyboard(unsigned char c, int x, int y)
     (void)x; (void)y;
     switch (c)
     {
-        // case 's': lightX += 0.2; lightY += 0.0; lightZ += 0.0; break;
-        // case 'w': lightX -= 0.2; lightY -= 0.0; lightZ -= 0.0; break;
-        // case 'd': lightX -= 0.0; lightY -= 0.0; lightZ -= 0.2; break;
-        // case 'a': lightX += 0.0; lightY += 0.0; lightZ += 0.2; break;
-        // case 'q': lightY += 0.2; break;
-        // case 'e': lightY -= 0.2; break;
-        // case '+':
-        //     nbDivisions += 1;
-        //     div_location = glGetUniformLocation(program_id, "nb_divisions");TEST_OPENGL_ERROR();
-        //     glUniform1f(div_location, nbDivisions);TEST_OPENGL_ERROR();
-        //     break;
-        // case '-':
-        //     if (nbDivisions > 0)
-        //       nbDivisions -= 1;
-        //     div_location = glGetUniformLocation(program_id, "nb_divisions");TEST_OPENGL_ERROR();
-        //     glUniform1f(div_location, nbDivisions);TEST_OPENGL_ERROR();
-        //     break;
+        case 'w': _target_speed = std::min(_target_speed + 0.5f, 12.f); break; // stronger wind
+        case 's': _target_speed = std::max(_target_speed - 0.5f, 0.f);  break; // weaker wind
+        case 'a': _target_angle -= 0.3f; break;                                // rotate wind
+        case 'd': _target_angle += 0.3f; break;
         case '7':
             increment_inner_divisions();
             break;
@@ -123,6 +124,7 @@ void Scene::handle_keyboard(unsigned char c, int x, int y)
 void Scene::animate(float dt)
 {
     _anim_time += dt;
+    wave_movement(dt);
     glutPostRedisplay();
 }
 
@@ -198,6 +200,69 @@ void Scene::advance_time(float dh)
     set_time_of_day(_time_of_day + dh);
 }
 
+void Scene::wave_movement(float dt)
+{
+    const float PI = 3.14159265f;
+
+    // --- wind: ease toward the target so nothing snaps ---
+    const float s = 1.f - std::exp(-dt / 3.f);
+    _wind_angle += (_target_angle - _wind_angle) * s;
+    _wind_speed += (_target_speed - _wind_speed) * s;
+    _wind_phase += _wind_speed * 1.8f * dt;
+
+    const vec3 wind_dir(std::cos(_wind_angle), 0.f, std::sin(_wind_angle));
+
+    // --- grass reads the same wind ---
+    for (auto& m : _grass_mats)
+    {
+        m->set_vec3("wind_dir", wind_dir);
+        m->set_float("wind_speed", _wind_speed);
+        m->set_float("wind_phase", _wind_phase);
+    }
+
+    if (!_wave_compute)
+        return;
+
+    // --- wave components derived from the wind speed ---
+    static const float RATIO[N_WAVES]  = {1.0f, 0.72f, 0.5f, 0.35f, 0.24f, 0.16f, 0.11f, 0.07f};  // wavelength / peak
+    static const float SPREAD[N_WAVES] = {0.0f, 0.45f, -0.55f, 0.9f, -0.95f, 0.3f, -0.25f, 0.7f};  // radians off the wind
+    static const float WEIGHT[N_WAVES] = {1.0f, 0.8f, 0.7f, 0.5f, 0.4f, 0.25f, 0.15f, 0.08f};
+
+    const float U = _wind_speed;
+    const float lambda_peak = std::min(std::max(0.83f * U * U, 2.f), _wave_size * 0.5f);
+    const float Hs = 0.0214f * U * U; // significant wave height
+
+    float raw[N_WAVES], k[N_WAVES], sumsq = 0.f;
+    for (int i = 0; i < N_WAVES; i++)
+    {
+        float c = std::cos(SPREAD[i]);
+        raw[i] = WEIGHT[i] * c * c;            // waves far from the wind direction are weaker
+        sumsq += raw[i] * raw[i];
+        float lambda = std::max(lambda_peak * RATIO[i], 0.4f);
+        k[i] = 2.f * PI / lambda;
+    }
+    const float scale = (Hs / 2.83f) / std::sqrt(sumsq); // so the total height matches Hs
+
+    for (int i = 0; i < N_WAVES; i++)
+    {
+        float amp = std::min(raw[i] * scale, 0.4f / k[i]); // keep slopes below ~0.4
+        _wave_phase[i] = std::fmod(_wave_phase[i] + std::sqrt(9.81f * k[i]) * dt, 2.f * PI);
+
+        float ang = _wind_angle + SPREAD[i];
+        std::string n = std::to_string(i);
+        _wave_compute->set_vec3("wave_dk[" + n + "]", vec3(std::cos(ang), std::sin(ang), k[i]));
+        _wave_compute->set_vec3("wave_ap[" + n + "]", vec3(amp, _wave_phase[i], 0.f));
+    }
+    _wave_compute->set_vec3("wind_dir", wind_dir);
+    _wave_compute->set_float("anim_time", _anim_time);
+
+    // --- run the compute pass: one thread per texel ---
+    _wave_compute->bind();
+    glBindImageTexture(2, _wave_tex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    glDispatchCompute((WAVE_RES + 7) / 8, (WAVE_RES + 7) / 8, 1);
+    glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT);
+}
+
 void Scene::add_skybox()
 {
     _skybox = std::make_shared<Skybox>();
@@ -251,11 +316,21 @@ std::vector<GLfloat> make_plane(int n)
 
 void Scene::add_tesselation_wave(const vec3& translation, const float& scale)
 {
+    _wave_size = scale;
+    _wave_tex = make_wave_texture(WAVE_RES);
+
     auto wave_mat = std::make_shared<Material>(Pipeline{"wave/vertex.shd", "wave/tess_control.shd", "wave/tess_evaluation.shd", "", "wave/fragment.shd", ""});
+    wave_mat->add_texture("wave_tex", _wave_tex);
+    wave_mat->set_float("plane_size", scale);
 
     Object wave(make_plane(scale), make_plane_normals(scale), wave_mat);
     wave.translate(translation);
     wave.scale(scale);
+
+    // the compute material must be KEPT, otherwise it is destroyed when this function returns
+    _wave_compute = std::make_shared<Material>(Pipeline{"", "", "", "", "", "wave/compute.shd"});
+    _wave_compute->set_float("plane_size", scale);
+    _wave_compute->set_int("nb_waves", N_WAVES);
 
     _objects.push_back(wave);
     _programs.push_back(wave_mat);
@@ -327,6 +402,7 @@ void Scene::add_grass(const vec3& terrain_origin, const float& terrain_size)
         Object o(make_grass_tile(cells), std::vector<GLfloat>(cells * cells * 3, 0.f), mat);
         _objects.push_back(o);
         _programs.push_back(mat);
+        _grass_mats.push_back(mat);
     };
 
     layer(40, 9, 4.0f, -1.f, 0.f, 5.f, 14.f, 1.0f, 1.0f); // near: dense, thin blades
@@ -391,6 +467,7 @@ std::shared_ptr<Scene> Scene::default_scene()
     scene->add_glowing_light(false, 5.2f, 7.7f, 1.5f, 0.8f, vec3(1.0f, 0.45f, 0.1f), 3.f, 3.f);
     scene->add_glowing_light(true, -6.f, 8.2f, 1.0f, 0.9f, vec3(0.2f, 0.70f, 1.0f), 3.f, 6.f);
     scene->add_glowing_light(false, 0.f, -6.f, 2.0f, 0.5f, vec3(1.0f, 0.20f, 0.7f), 3.f, 2.f);
+    scene->wave_movement(0.f);
 
     return scene;
 }

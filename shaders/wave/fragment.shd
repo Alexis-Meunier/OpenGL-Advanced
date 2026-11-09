@@ -4,8 +4,8 @@
 #define MAX_LIGHTS 16
 
 in vec3 fr_color;
-in vec3 fr_normal;
 in vec3 fr_pos;
+in vec2 fr_uv;
 
 layout(location=0) out vec4 out_color;
 
@@ -18,6 +18,8 @@ struct Light {
 };
 uniform Light lights[MAX_LIGHTS];
 uniform int nb_lights;
+
+uniform sampler2D wave_tex;
 
 // Point lights only reach a limited distance, so each one stays local and
 // the colours of different lights don't pile up everywhere. The sun has no falloff.
@@ -60,7 +62,11 @@ vec3 fresnel(vec3 f0, vec3 w0) {
 
 void main() {
     float roughness = 0.5;
-    vec3 N = normalize(fr_normal);
+
+    vec4 w = texture(wave_tex, fr_uv);
+    vec3 N = normalize(vec3(-w.g, 1.0, -w.b));
+    // N = normalize(mix(N, vec3(0, 1, 0), clamp(dist * 0.01, 0, 1)))
+
     vec3 V = normalize(cameraPos - fr_pos);
     float NdotV = max(cdot(N, V), 1e-4);
 
