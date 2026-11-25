@@ -10,12 +10,14 @@
 static const float TERRAIN_AMP = 18.0f;
 static const int WAVE_RES = 1024;
 
-static GLuint make_wave_texture(int size)
+static const float BUNNY_T_EXPLODE = 13.4f;
+
+static GLuint make_wave_texture(int size, GLenum format = GL_RGBA32F)
 {
     GLuint id;
     glGenTextures(1, &id);
     glBindTexture(GL_TEXTURE_2D, id);
-    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, size, size);
+    glTexStorage2D(GL_TEXTURE_2D, 1, format, size, size);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -62,9 +64,9 @@ void Scene::on_motion(int x, int y)
 {
     if (_dragging)
     {
-        _camera.yaw   -= (x - _lastX) * 0.005f;
+        _camera.yaw -= (x - _lastX) * 0.005f;
         _camera.pitch += (y - _lastY) * 0.005f;
-        if (_camera.pitch > 1.5f)  _camera.pitch = 1.5f;
+        if (_camera.pitch > 1.5f) _camera.pitch = 1.5f;
         if (_camera.pitch < 0.05f) _camera.pitch = 0.05f;
         _camera.update_camera();
     }
@@ -74,7 +76,8 @@ void Scene::on_motion(int x, int y)
     }
     else return;
 
-    _lastX = x; _lastY = y;
+    _lastX = x;
+    _lastY = y;
     glutPostRedisplay();
 }
 
@@ -82,7 +85,7 @@ void Scene::on_wheel(int w, int d, int x, int y)
 {
     (void)w; (void)x; (void)y;
     _camera.dist -= d * 0.2f;
-    if (_camera.dist < 0.5f)  _camera.dist = 0.5f;
+    if (_camera.dist < 0.5f) _camera.dist = 0.5f;
     if (_camera.dist > 20.0f) _camera.dist = 20.0f;
 
     _camera.update_camera();
@@ -94,9 +97,9 @@ void Scene::handle_keyboard(unsigned char c, int x, int y)
     (void)x; (void)y;
     switch (c)
     {
-        case 'w': _target_speed = std::min(_target_speed + 0.5f, 12.f); break; // stronger wind
-        case 's': _target_speed = std::max(_target_speed - 0.5f, 0.f);  break; // weaker wind
-        case 'a': _target_angle -= 0.3f; break;                                // rotate wind
+        case 'w': _target_speed = std::min(_target_speed + 0.5f, 12.f); break;
+        case 's': _target_speed = std::max(_target_speed - 0.5f, 0.f);  break;
+        case 'a': _target_angle -= 0.3f; break;
         case 'd': _target_angle += 0.3f; break;
         case '7':
             increment_inner_divisions();
@@ -115,6 +118,7 @@ void Scene::handle_keyboard(unsigned char c, int x, int y)
         case 'b':
             display_bloom = !display_bloom;
             break;
+        case 'e': _bunny_t0 = _anim_time; break;
         case 27: exit(0);
     }
     
@@ -124,6 +128,7 @@ void Scene::handle_keyboard(unsigned char c, int x, int y)
 void Scene::animate(float dt)
 {
     _anim_time += dt;
+    bunny_movement(dt);
     wave_movement(dt);
     glutPostRedisplay();
 }
@@ -158,7 +163,7 @@ void Scene::increment_outer_divisions()
 void Scene::increment_inner_divisions()
 {
     if (_middle_divisions < 60)
-    _middle_divisions++;
+        _middle_divisions++;
 }
 
 void Scene::decrement_outer_divisions()
@@ -204,7 +209,6 @@ void Scene::wave_movement(float dt)
 {
     const float PI = 3.14159265f;
 
-    // --- wind: ease toward the target so nothing snaps ---
     const float s = 1.f - std::exp(-dt / 3.f);
     _wind_angle += (_target_angle - _wind_angle) * s;
     _wind_speed += (_target_speed - _wind_speed) * s;
@@ -212,7 +216,6 @@ void Scene::wave_movement(float dt)
 
     const vec3 wind_dir(std::cos(_wind_angle), 0.f, std::sin(_wind_angle));
 
-    // --- grass reads the same wind ---
     for (auto& m : _grass_mats)
     {
         m->set_vec3("wind_dir", wind_dir);
@@ -223,29 +226,29 @@ void Scene::wave_movement(float dt)
     if (!_wave_compute)
         return;
 
-    // --- wave components derived from the wind speed ---
-    static const float RATIO[N_WAVES]  = {1.0f, 0.72f, 0.5f, 0.35f, 0.24f, 0.16f, 0.11f, 0.07f};  // wavelength / peak
-    static const float SPREAD[N_WAVES] = {0.0f, 0.45f, -0.55f, 0.9f, -0.95f, 0.3f, -0.25f, 0.7f};  // radians off the wind
+    // TODO: Find a way to remove hardcoded values
+    static const float RATIO[N_WAVES] = {1.0f, 0.72f, 0.5f, 0.35f, 0.24f, 0.16f, 0.11f, 0.07f};
+    static const float SPREAD[N_WAVES] = {0.0f, 0.45f, -0.55f, 0.9f, -0.95f, 0.3f, -0.25f, 0.7f};
     static const float WEIGHT[N_WAVES] = {1.0f, 0.8f, 0.7f, 0.5f, 0.4f, 0.25f, 0.15f, 0.08f};
 
     const float U = _wind_speed;
     const float lambda_peak = std::min(std::max(0.83f * U * U, 2.f), _wave_size * 0.5f);
-    const float Hs = 0.0214f * U * U; // significant wave height
+    const float Hs = 0.0214f * U * U;
 
     float raw[N_WAVES], k[N_WAVES], sumsq = 0.f;
     for (int i = 0; i < N_WAVES; i++)
     {
         float c = std::cos(SPREAD[i]);
-        raw[i] = WEIGHT[i] * c * c;            // waves far from the wind direction are weaker
+        raw[i] = WEIGHT[i] * c * c;
         sumsq += raw[i] * raw[i];
         float lambda = std::max(lambda_peak * RATIO[i], 0.4f);
         k[i] = 2.f * PI / lambda;
     }
-    const float scale = (Hs / 2.83f) / std::sqrt(sumsq); // so the total height matches Hs
+    const float scale = (Hs / 2.83f) / std::sqrt(sumsq);
 
     for (int i = 0; i < N_WAVES; i++)
     {
-        float amp = std::min(raw[i] * scale, 0.4f / k[i]); // keep slopes below ~0.4
+        float amp = std::min(raw[i] * scale, 0.4f / k[i]);
         _wave_phase[i] = std::fmod(_wave_phase[i] + std::sqrt(9.81f * k[i]) * dt, 2.f * PI);
 
         float ang = _wind_angle + SPREAD[i];
@@ -256,11 +259,48 @@ void Scene::wave_movement(float dt)
     _wave_compute->set_vec3("wind_dir", wind_dir);
     _wave_compute->set_float("anim_time", _anim_time);
 
-    // --- run the compute pass: one thread per texel ---
+    _ripple_compute->bind();
+    glBindImageTexture(3, _splash_tex, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
+    for (int i = 0; i < 2; i++)
+    {
+        glBindImageTexture(4, _ripple_tex[i], 0, GL_FALSE, 0, GL_READ_ONLY, GL_RG32F);
+        glBindImageTexture(5, _ripple_tex[1 - i], 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RG32F);
+        glDispatchCompute((WAVE_RES + 7) / 8, (WAVE_RES + 7) / 8, 1);
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_UPDATE_BARRIER_BIT);
+        if (i == 0)
+            glClearTexImage(_splash_tex, 0, GL_RED_INTEGER, GL_INT, nullptr);
+    }
+
     _wave_compute->bind();
     glBindImageTexture(2, _wave_tex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    glBindImageTexture(4, _ripple_tex[0], 0, GL_FALSE, 0, GL_READ_ONLY, GL_RG32F);
     glDispatchCompute((WAVE_RES + 7) / 8, (WAVE_RES + 7) / 8, 1);
     glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT);
+}
+
+void Scene::bunny_movement(float dt)
+{
+    if (!_bunny_compute)
+        return;
+
+    float t = _anim_time - _bunny_t0;
+    Object& bunny = _objects[_bunny_idx];
+    bunny.set_material(t < BUNNY_T_EXPLODE ? _bunny_mat : _bunny_explode_mat);
+    _bunny_explode_mat->set_float("t_explode", _bunny_t0 + BUNNY_T_EXPLODE);
+
+    _bunny_compute->set_float("anim_time", t);
+    _bunny_compute->set_float("dt", dt);
+    _bunny_compute->set_float("water_y", _water_y);
+    _bunny_compute->set_mat4("model", bunny.model());
+
+    _bunny_compute->bind();
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, bunny.vertex_buffer());
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, bunny.normal_buffer());
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, _bunny_orig);
+    if (_splash_tex)
+        glBindImageTexture(3, _splash_tex, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
+    glDispatchCompute((bunny.vertex_count() + 255) / 256, 1, 1);
+    glMemoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 }
 
 void Scene::add_skybox()
@@ -278,6 +318,26 @@ void Scene::add_bunny(const vec3& translation, const vec3& scale)
 
     _objects.push_back(rabbit);
     _programs.push_back(base_material);
+}
+
+void Scene::add_exploding_bunny(const vec3& translation, const vec3& scale)
+{
+    add_bunny(translation, scale);
+    _bunny_idx = _objects.size() - 1;
+    _bunny_mat = _programs.back();
+    _bunny_t0 = _anim_time;
+
+    _bunny_explode_mat = std::make_shared<Material>(Pipeline{
+        "explosion/vertex.shd", "", "", "explosion/geometry.shd", "bunny/fragment.shd", ""});
+    _programs.push_back(_bunny_explode_mat);
+
+    glGenBuffers(1, &_bunny_orig);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, _bunny_orig);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, bunny_vertices.size() * sizeof(GLfloat), bunny_vertices.data(), GL_STATIC_DRAW);
+
+    _bunny_compute = std::make_shared<Material>(Pipeline{"", "", "", "", "", "explosion/compute.shd"});
+    _bunny_compute->set_int("nb_vertex", _objects[_bunny_idx].vertex_count());
+    _bunny_compute->set_float("plane_size", _wave_size);
 }
 
 std::vector<GLfloat> make_plane_normals(int n)
@@ -300,7 +360,8 @@ std::vector<GLfloat> make_plane(int n)
     {
         for (int i = 0; i < n; i++)
         {
-            float x = -0.5f + i * s, z = -0.5f + j * s;
+            float x = -0.5f + i * s;
+            float z = -0.5f + j * s;
             float q[4][2] = { {x, z}, {x, z + s}, {x + s, z + s}, {x + s, z} };
             for (auto& c : q)
             {
@@ -327,10 +388,19 @@ void Scene::add_tesselation_wave(const vec3& translation, const float& scale)
     wave.translate(translation);
     wave.scale(scale);
 
-    // the compute material must be KEPT, otherwise it is destroyed when this function returns
     _wave_compute = std::make_shared<Material>(Pipeline{"", "", "", "", "", "wave/compute.shd"});
     _wave_compute->set_float("plane_size", scale);
     _wave_compute->set_int("nb_waves", N_WAVES);
+
+    _water_y = translation.y;
+    _splash_tex = make_wave_texture(WAVE_RES, GL_R32I);
+    glClearTexImage(_splash_tex, 0, GL_RED_INTEGER, GL_INT, nullptr);
+    for (GLuint& tex : _ripple_tex)
+    {
+        tex = make_wave_texture(WAVE_RES, GL_RG32F);
+        glClearTexImage(tex, 0, GL_RG, GL_FLOAT, nullptr);
+    }
+    _ripple_compute = std::make_shared<Material>(Pipeline{"", "", "", "", "", "wave/ripple.compute.shd"});
 
     _objects.push_back(wave);
     _programs.push_back(wave_mat);
@@ -369,44 +439,41 @@ static std::vector<GLfloat> make_grass_tile(int n)
         }
     return v;
 }
- 
+
+void Scene::create_layer(int cells, int grid, float tile, float in_start, float in_end, float out_start, float out_end, float width_scale, float height_scale)
+{
+    auto mat = std::make_shared<Material>(Pipeline{
+        "grass/vertex.shd", "", "", "grass/geometry.shd", "grass/fragment.shd", ""});
+    mat->draw_type = GL_POINTS;
+    mat->instance_count = grid * grid;
+    mat->cull_face = false;
+    mat->add_texture("heightmap", _heightmap_id);
+
+    mat->set_float("terrain_size", terrain_size);
+    mat->set_float("terrain_amp", TERRAIN_AMP);
+    mat->set_vec3("terrain_origin", terrain_origin);
+
+    mat->set_int("grass_grid", grid);
+    mat->set_float("grass_tile", tile);
+    mat->set_float("grass_cells", cells);
+
+    mat->set_float("fade_in_start", in_start);
+    mat->set_float("fade_in_end", in_end);
+    mat->set_float("fade_start", out_start);
+    mat->set_float("fade_end", out_end);
+    mat->set_float("width_scale", width_scale);
+    mat->set_float("height_scale", height_scale);
+
+    Object o(make_grass_tile(cells), std::vector<GLfloat>(cells * cells * 3, 0.f), mat);
+    _objects.push_back(o);
+    _programs.push_back(mat);
+    _grass_mats.push_back(mat);
+}
+
 void Scene::add_grass(const vec3& terrain_origin, const float& terrain_size)
 {
-    auto layer = [&](int cells, int grid, float tile,
-                    float in_start, float in_end, // fade IN  (blades appear)
-                    float out_start, float out_end, // fade OUT (blades thin out, then vanish)
-                    float width_scale, float height_scale)
-    {
-        auto mat = std::make_shared<Material>(Pipeline{
-            "grass/vertex.shd", "", "", "grass/geometry.shd", "grass/fragment.shd", ""});
-        mat->draw_type = GL_POINTS;
-        mat->instance_count = grid * grid;
-        mat->cull_face = false;
-        mat->add_texture("heightmap", _heightmap_id);
- 
-        mat->set_float("terrain_size", terrain_size);
-        mat->set_float("terrain_amp", TERRAIN_AMP);
-        mat->set_vec3("terrain_origin", terrain_origin);
- 
-        mat->set_int("grass_grid", grid);
-        mat->set_float("grass_tile", tile);
-        mat->set_float("grass_cells", cells);
- 
-        mat->set_float("fade_in_start", in_start);
-        mat->set_float("fade_in_end", in_end);
-        mat->set_float("fade_start", out_start);
-        mat->set_float("fade_end", out_end);
-        mat->set_float("width_scale", width_scale);
-        mat->set_float("height_scale", height_scale);
- 
-        Object o(make_grass_tile(cells), std::vector<GLfloat>(cells * cells * 3, 0.f), mat);
-        _objects.push_back(o);
-        _programs.push_back(mat);
-        _grass_mats.push_back(mat);
-    };
-
-    layer(40, 9, 4.0f, -1.f, 0.f, 5.f, 14.f, 1.0f, 1.0f); // near: dense, thin blades
-    layer(40, 5, 16.0f, 8.f, 14.f, 20.f, 30.f, 2.5f, 1.8f); // far: sparse, big tufts
+    create_layer(40, 9, 4.0f, -1.f, 0.f, 5.f, 14.f, 1.0f, 1.0f); // near: dense, thin blades
+    create_layer(40, 5, 16.0f, 8.f, 14.f, 20.f, 30.f, 2.5f, 1.8f); // far: sparse, big tufts
 }
 
 float Scene::terrain_height(float x, float z)
@@ -460,6 +527,7 @@ std::shared_ptr<Scene> Scene::default_scene()
     // scene->add_bunny({0.0}, {0.2});
     scene->add_tesselation_wave({0.0, 2.0, 0.0}, 50.0);
     scene->add_grass({0.0}, 50.0);
+    scene->add_exploding_bunny({-2.0, 3.5, 4.0}, {2.0});
 
     scene->_sun_idx = scene->_lights.size();
     scene->_lights.push_back(Light::directional(vec3(0.f, 1.f, 0.f), vec3(1.f, 1.f, 1.f), 1.f));

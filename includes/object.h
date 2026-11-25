@@ -25,6 +25,11 @@ class Object {
         void render(const matrix4& view, const matrix4& proj, const vec3& cam_pos, const float& anim_time, const float& nb_div, const float& middle_div, std::vector<Light>& lights) const;
         void translate(const vec3& t) { _translation = t; update_model(); }
         void scale(const vec3& s) { _scale = s; update_model(); }
+        void set_material(const std::shared_ptr<Material>& m) { _material = m; }
+        GLuint vertex_buffer() const { return _vertices.index; }
+        GLuint normal_buffer() const { return _normals.index; }
+        size_t vertex_count() const { return _vertices.val.size() / 3; }
+        const matrix4& model() const { return _model; }
 
     private:
         Buffer _vertices;

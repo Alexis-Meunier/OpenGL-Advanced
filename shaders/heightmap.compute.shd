@@ -5,7 +5,7 @@ layout(local_size_x = 16, local_size_y = 16) in;
 layout(binding = 1, r32f) uniform writeonly image2D heightmap_out;
 
 const int OCTAVES = 6;
-const float BASE_FREQ = 3.0;    // number of "big hills" across the map
+const float BASE_FREQ = 3.0;
 const float LACUNARITY = 2.0;
 const float GAIN = 0.5;
 
@@ -27,7 +27,6 @@ float noise(vec2 p) {
     return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }
 
-// fBm: sum of octaves, each one finer and weaker. Result in [0, 1].
 float fbm(vec2 st) {
     const mat2 rot = mat2(cos(0.5), sin(0.5), -sin(0.5), cos(0.5));
     float value = 0.0;
@@ -36,7 +35,7 @@ float fbm(vec2 st) {
     for (int i = 0; i < OCTAVES; i++) {
         value += amp * noise(st);
         norm  += amp;
-        st = rot * st * LACUNARITY + vec2(100.0);   // rotate to hide the grid
+        st = rot * st * LACUNARITY + vec2(100.0);
         amp *= GAIN;
     }
     return value / norm;
@@ -47,9 +46,9 @@ void main() {
     ivec2 size = imageSize(heightmap_out);
     if (px.x >= size.x || px.y >= size.y) return;
 
-    vec2 uv = (vec2(px) + 0.5) / vec2(size);        // [0,1]
+    vec2 uv = (vec2(px) + 0.5) / vec2(size);
     float h = fbm(uv * BASE_FREQ);
 
-    h = pow(h, 1.6);                                 // flatter valleys, sharper peaks (tweak)
+    h = pow(h, 1.6);
     imageStore(heightmap_out, px, vec4(h, 0.0, 0.0, 0.0));
 }

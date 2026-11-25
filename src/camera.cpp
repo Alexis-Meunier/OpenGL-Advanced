@@ -24,13 +24,12 @@ void Camera::update_camera()
 
 void Camera::pan(float dx, float dy)
 {
-    // camera right / up vectors, derived from yaw and pitch
     vec3 right = { std::cos(yaw), 0.f, -std::sin(yaw) };
     vec3 up    = { -std::sin(pitch) * std::sin(yaw),
                     std::cos(pitch),
                    -std::sin(pitch) * std::cos(yaw) };
 
-    float k = dist * 0.001f;   // pan speed scales with zoom
+    float k = dist * 0.001f;
     _target.x += (-dx * right.x + dy * up.x) * k;
     _target.y += (-dx * right.y + dy * up.y) * k;
     _target.z += (-dx * right.z + dy * up.z) * k;
@@ -53,7 +52,6 @@ Camera::Camera() : yaw(0.6f), pitch(0.5f), dist(2.5f)
     _proj = matrix4::identity();
     update_camera();
 }
-// same for the second constructor
 
 Camera::Camera(const float& yaw, const float& pitch, const float& dist) : yaw(yaw), pitch(pitch), dist(dist)
 {

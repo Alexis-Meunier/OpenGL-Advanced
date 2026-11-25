@@ -2,19 +2,18 @@
 
 layout(local_size_x = 8, local_size_y = 8) in;
 
-// image unit 2 (must match glBindImageTexture(2, ...) in Scene::wave_movement)
 layout(binding = 2, rgba32f) uniform writeonly image2D wave_tex;
+layout(binding = 4, rg32f) uniform readonly image2D ripple_tex;
 
 #define MAX_WAVES 8
 
-uniform int   nb_waves;
+uniform int nb_waves;
 uniform float plane_size;
 uniform float anim_time;
-uniform vec3  wind_dir;            // (x, 0, z), normalized
-uniform vec3  wave_dk[MAX_WAVES];  // xy = direction in (x, z), z = wavenumber k
-uniform vec3  wave_ap[MAX_WAVES];  // x = amplitude, y = accumulated phase
+uniform vec3 wind_dir;
+uniform vec3 wave_dk[MAX_WAVES];
+uniform vec3 wave_ap[MAX_WAVES];
 
-// keep these identical to the ones in the grass shader so gusts match
 float hash(vec2 p) {
     p = fract(p * vec2(123.34, 456.21));
     p += dot(p, p + 45.32);
@@ -35,29 +34,31 @@ float noise(vec2 p) {
 
 void main()
 {
-    ivec2 px   = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 px = ivec2(gl_GlobalInvocationID.xy);
     ivec2 size = imageSize(wave_tex);
     if (any(greaterThanEqual(px, size)))
-        return; // dispatch is rounded up to a multiple of 8
+        return;
 
-    // world xz of this texel (plane centred on the origin)
     vec2 xz = ((vec2(px) + 0.5) / vec2(size) - 0.5) * plane_size;
-
-    // gusts: a smooth noise field sliding along the wind
     float gust = 0.7 + 0.3 * noise(xz * 0.05 - wind_dir.xz * anim_time * 0.5);
 
     float h = 0.0;
     vec2 grad = vec2(0.0);
     for (int i = 0; i < nb_waves; i++)
     {
-        vec2  d  = wave_dk[i].xy;
-        float k  = wave_dk[i].z;
-        float a  = wave_ap[i].x * gust;
-        float ph = dot(d, xz) * k - wave_ap[i].y; // minus: the wave travels along d
+        vec2 d = wave_dk[i].xy;
+        float k = wave_dk[i].z;
+        float a = wave_ap[i].x * gust;
+        float ph = dot(d, xz) * k - wave_ap[i].y;
 
-        h    += a * sin(ph);
+        h += a * sin(ph);
         grad += a * k * cos(ph) * d;
     }
+
+    float texel = plane_size / float(size.x);
+    h += imageLoad(ripple_tex, px).r;
+    grad += vec2(imageLoad(ripple_tex, px + ivec2(1, 0)).r - imageLoad(ripple_tex, px - ivec2(1, 0)).r,
+                 imageLoad(ripple_tex, px + ivec2(0, 1)).r - imageLoad(ripple_tex, px - ivec2(0, 1)).r) / (2.0 * texel);
 
     imageStore(wave_tex, px, vec4(h, grad.x, grad.y, 0.0));
 }

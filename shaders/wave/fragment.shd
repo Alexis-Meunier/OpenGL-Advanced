@@ -21,8 +21,6 @@ uniform int nb_lights;
 
 uniform sampler2D wave_tex;
 
-// Point lights only reach a limited distance, so each one stays local and
-// the colours of different lights don't pile up everywhere. The sun has no falloff.
 #define LIGHT_RANGE 12.0
 float attenuation(Light l, vec3 p)
 {
@@ -71,7 +69,6 @@ void main() {
     float NdotV = max(cdot(N, V), 1e-4);
 
     vec3 sun_col = lights[0].color * lights[0].intensity;
-    // 0 at night, 1 in daylight (same curve as the skybox)
     float day = smoothstep(-0.10, 0.25, lights[0].dir.y);
     vec3 color = 0.15 * fr_color * (mix(0.05, 0.4, day) + 0.6 * sun_col);
     for (int i = 0; i < nb_lights; i++)
@@ -94,8 +91,7 @@ void main() {
         color += (diffuse + specular) * lights[i].color * lights[i].intensity * attenuation(lights[i], fr_pos) * NdotL;
     }
 
-    // What the water reflects: the daytime sky, fading to the dark night sky.
-    vec3 day_sky   = mix(vec3(0.5, 0.7, 1.0), sun_col, 0.6);
+    vec3 day_sky = mix(vec3(0.5, 0.7, 1.0), sun_col, 0.6);
     vec3 night_sky = vec3(0.04, 0.05, 0.10);
     vec3 sky = mix(night_sky, day_sky, day);
     float fr = pow(1.0 - NdotV, 5.0);

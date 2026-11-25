@@ -14,7 +14,7 @@ uniform vec3 cameraPos;
 float edge_level(vec4 a, vec4 b)
 {
     float d = distance(cameraPos, 0.5 * (a.xyz + b.xyz));
-    return clamp(300.0 / d, 2.0, 32.0);   // tune 300 and 32
+    return clamp(300.0 / d, 2.0, 32.0);
 }
 
 void main() {
@@ -32,6 +32,3 @@ void main() {
     tsc_color[gl_InvocationID] = vs_color[gl_InvocationID];
     tsc_normals[gl_InvocationID] = vs_normal[gl_InvocationID];
 }
-
-// inside main(), only when gl_InvocationID == 0
-

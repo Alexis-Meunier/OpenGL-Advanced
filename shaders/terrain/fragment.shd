@@ -6,6 +6,10 @@ in vec3 fr_pos;
 in vec3 fr_normal;
 in float fr_height;
 
+const vec3 sand = vec3(0.76, 0.70, 0.50);
+const vec3 grass = vec3(0.20, 0.45, 0.12);
+const vec3 rock = vec3(0.40, 0.38, 0.36);
+
 layout(location=0) out vec4 out_color;
 
 struct Light {
@@ -18,8 +22,6 @@ struct Light {
 uniform Light lights[MAX_LIGHTS];
 uniform int nb_lights;
 
-// Point lights only reach a limited distance, so each one stays local and
-// the colours of different lights don't pile up everywhere. The sun has no falloff.
 #define LIGHT_RANGE 12.0
 float attenuation(Light l, vec3 p)
 {
@@ -33,11 +35,6 @@ float attenuation(Light l, vec3 p)
 
 void main() {
     vec3 N = normalize(fr_normal);
-
-    // Colour by altitude, rock on steep slopes
-    vec3 sand = vec3(0.76, 0.70, 0.50);
-    vec3 grass = vec3(0.20, 0.45, 0.12);
-    vec3 rock = vec3(0.40, 0.38, 0.36);
     vec3 albedo = mix(sand, grass, smoothstep(0.05, 0.20, fr_height));
     albedo = mix(albedo, rock, 1.0 - smoothstep(0.55, 0.75, N.y));
 

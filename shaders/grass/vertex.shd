@@ -7,9 +7,9 @@ out vec3 vs_rnd;
 
 uniform vec3 cameraPos;
 
-uniform int grass_grid;// GRID x GRID tiles around the camera
-uniform float grass_tile; // world size of one tile
-uniform float grass_cells; // points per tile side (must match the C++ buffer)
+uniform int grass_grid;
+uniform float grass_tile;
+uniform float grass_cells;
 
 float hash12(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);

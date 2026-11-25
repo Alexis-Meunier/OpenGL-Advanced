@@ -19,8 +19,6 @@ struct Light {
 uniform Light lights[MAX_LIGHTS];
 uniform int nb_lights;
 
-// Point lights only reach a limited distance, so each one stays local and
-// the colours of different lights don't pile up everywhere. The sun has no falloff.
 #define LIGHT_RANGE 12.0
 float attenuation(Light l, vec3 p)
 {
@@ -34,8 +32,9 @@ float attenuation(Light l, vec3 p)
 uniform vec3 cameraPos;
 
 void main() {
+    // TODO: Do not hardcode
     vec3 root_col = vec3(0.04, 0.16, 0.03);
-    vec3 tip_col  = vec3(0.42, 0.68, 0.16);
+    vec3 tip_col = vec3(0.42, 0.68, 0.16);
     vec3 albedo = mix(root_col, tip_col, fr_t) * (0.8 + 0.4 * fr_tint);
 
     vec3 N = normalize(fr_normal);

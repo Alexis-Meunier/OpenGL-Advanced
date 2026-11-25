@@ -8,7 +8,7 @@ in vec3 vs_rnd[];
 
 out vec3  fr_pos;
 out vec3  fr_normal;
-out float fr_t; // 0 at the root, 1 at the tip
+out float fr_t;
 out float fr_tint;
 
 uniform mat4 view;
@@ -19,16 +19,16 @@ uniform float anim_time;
 uniform sampler2D heightmap;
 uniform float terrain_size;
 uniform vec3  terrain_origin;
-uniform float water_level = 2.0; // blades below this are skipped
+uniform float water_level = 2.0;
 
 const float BLADE_H = 0.45;
 const float BLADE_W = 0.035;
-const float MIN_UP = 0.75; // skip slopes steeper than this (terrain normal .y)
+const float MIN_UP = 0.75;
 
 uniform float terrain_amp;
-uniform float fade_in_start = -1.0; // fade-in range (0 for the near layer)
+uniform float fade_in_start = -1.0;
 uniform float fade_in_end = 0.0;
-uniform float fade_start = 5.0; // fade-out range
+uniform float fade_start = 5.0;
 uniform float fade_end = 20.0;
 uniform float width_scale = 1.0;
 uniform float height_scale = 1.0;
@@ -82,17 +82,19 @@ bool frustum_culled(vec4 a, vec4 b) {
 }
 
 void emit(vec3 p, float t, vec3 n) {
-    fr_pos = p; fr_normal = n; fr_t = t; fr_tint = tint;
+    fr_pos = p;
+    fr_normal = n;
+    fr_t = t;
+    fr_tint = tint;
     gl_Position = proj * view * vec4(p, 1.0);
     EmitVertex();
 }
 
 void main() {
     vec3 root = vs_pos[0];
-    vec3 rnd  = vs_rnd[0];
+    vec3 rnd = vs_rnd[0];
     tint = rnd.y;
 
-    // inside the heightmap
     vec2 uv = (root.xz - terrain_origin.xz) / terrain_size + 0.5;
     if (any(lessThan(uv, vec2(0.002))) || any(greaterThan(uv, vec2(0.998))))
         return;
@@ -102,7 +104,7 @@ void main() {
 
     // distance LOD
     float d = distance(cameraPos, root);
-    float fade_in  = clamp((d - fade_in_start) / (fade_in_end - fade_in_start), 0.0, 1.0);
+    float fade_in = clamp((d - fade_in_start) / (fade_in_end - fade_in_start), 0.0, 1.0);
     float far_fade = smoothstep(fade_start, fade_end, d);
     float fraction = fade_in * (1.0 - far_fade);
     if (rnd.z >= fraction)
@@ -125,7 +127,7 @@ void main() {
     if (normalize(vec3(-dx / ws, 1.0, -dz / ws)).y < MIN_UP) return;
 
     // blade shape
-    float width = BLADE_W * width_scale * (1.0 + 2.0 * lod); // far blades are fewer, so wider
+    float width = BLADE_W * width_scale * (1.0 + 2.0 * lod);
     float ang = rnd.x * 6.2831853;
     vec3 side = vec3(cos(ang), 0.0, sin(ang));
     vec3 face = vec3(-side.z, 0.0, side.x);
@@ -139,8 +141,7 @@ void main() {
     vec3 wind = vec3(wind_dir.x, 0, wind_dir.z) * sway * height * 0.4 * strength;
 
     vec3 lean = face * (rnd.y - 0.5) * height * 0.5;
-    vec3 P0 = root - vec3(0.0, 0.02, 0.0); // sink the root slightly: the tessellated
-                                           // terrain is coarser than the heightmap
+    vec3 P0 = root - vec3(0.0, 0.02, 0.0);
     vec3 P1 = P0 + vec3(0.0, 0.6 * height, 0.0) + 0.5 * lean + 0.4 * wind;
     vec3 P2 = P0 + vec3(0.0, height, 0.0) + lean + wind;
 

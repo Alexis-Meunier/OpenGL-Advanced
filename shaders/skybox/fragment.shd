@@ -8,40 +8,21 @@ uniform mat4 proj;
 uniform vec3 sunDir;
 uniform vec3 sunColor;
 
-float hash(vec3 p)
-{
-    p = fract(p * 0.3183099 + 0.1);
-    p *= 17.0;
-    return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
-}
-
 void main() {
     vec3 vdir = normalize(vec3(ndc.x / proj[0][0], ndc.y / proj[1][1], -1.0));
     vec3 dir = normalize(transpose(mat3(view)) * vdir);
 
-    float day = smoothstep(-0.10, 0.25, sunDir.y);   // 0 = night, 1 = day
+    float day = smoothstep(-0.10, 0.25, sunDir.y);
 
-    vec3 zenith  = mix(vec3(0.010, 0.015, 0.040), vec3(0.15, 0.35, 0.75), day);
+    vec3 zenith = mix(vec3(0.010, 0.015, 0.040), vec3(0.15, 0.35, 0.75), day);
     vec3 horizon = mix(vec3(0.040, 0.050, 0.100), vec3(0.65, 0.80, 0.95), day);
 
     float h = clamp(dir.y, 0.0, 1.0);
     vec3 sky = mix(horizon, zenith, pow(h, 0.5));
 
-    // Glow around the sun, tinted by the sun colour (sunset = orange).
     float sd = max(dot(dir, sunDir), 0.0);
     float visible = smoothstep(-0.25, 0.05, sunDir.y);
     sky += sunColor * (0.30 * pow(sd, 6.0) + 0.60 * pow(sd, 64.0)) * visible;
-
-    // Sun disc.
-    float disc = smoothstep(0.9995, 0.9998, sd) * visible;
-    sky = mix(sky, vec3(1.0, 0.95, 0.85) * 6.0, disc);
-
-    // Stars fade in when the sun is below the horizon.
-    vec3 cell = floor(dir * 160.0);
-    float star = step(0.9965, hash(cell)) * smoothstep(0.0, 0.2, dir.y);
-    sky += vec3(star) * (1.0 - day);
-
-    // Slightly darker below the horizon (the terrain will hide it anyway).
     sky = mix(sky, horizon * 0.6, 1.0 - smoothstep(-0.15, 0.0, dir.y));
 
     out_color = vec4(sky, 1.0);

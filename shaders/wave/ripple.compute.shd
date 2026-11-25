@@ -1,0 +1,39 @@
+#version 450
+
+layout(local_size_x = 8, local_size_y = 8) in;
+
+layout(binding = 3, r32i)  uniform readonly iimage2D splash_img;
+layout(binding = 4, rg32f) uniform readonly image2D  src;
+layout(binding = 5, rg32f) uniform writeonly image2D dst;
+
+const float DAMPING = 0.985;
+const float SPLASH_DEPTH = 0.02;
+const int MAX_HITS = 8;
+
+float hits(ivec2 p)
+{
+    return float(min(imageLoad(splash_img, p).r, MAX_HITS));
+}
+
+float h(ivec2 p)
+{
+    return imageLoad(src, p).r;
+}
+
+void main()
+{
+    ivec2 px = ivec2(gl_GlobalInvocationID.xy);
+    if (any(greaterThanEqual(px, imageSize(dst))))
+        return;
+
+    vec2 cur = imageLoad(src, px).rg;
+    float n = h(px + ivec2(1, 0)) + h(px - ivec2(1, 0)) + h(px + ivec2(0, 1)) + h(px - ivec2(0, 1));
+    float next = (0.5 * n - cur.g) * DAMPING;
+
+    float s = 4.0 * hits(px)
+            + 2.0 * (hits(px + ivec2(1, 0)) + hits(px - ivec2(1, 0)) + hits(px + ivec2(0, 1)) + hits(px - ivec2(0, 1)))
+            + hits(px + ivec2(1, 1)) + hits(px - ivec2(1, 1)) + hits(px + ivec2(1, -1)) + hits(px - ivec2(1, -1));
+    next -= SPLASH_DEPTH * s / 16.0;
+
+    imageStore(dst, px, vec4(next, cur.r, 0.0, 0.0));
+}

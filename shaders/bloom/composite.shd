@@ -3,8 +3,8 @@
 in vec2 uv;
 layout(location=0) out vec4 out_color;
 
-uniform sampler2D scene; // HDR scene colour
-uniform sampler2D bloom; // blurred bright parts (mip 0 of the bloom chain)
+uniform sampler2D scene;
+uniform sampler2D bloom;
 uniform float strength;
 
 void main()

@@ -11,7 +11,9 @@ Light::Light(const vec3& pos, const vec3& color, const float& intensity)
 Light Light::directional(const vec3& dir, const vec3& color, float intensity)
 {
     Light l;
-    l.dir = dir; l.color = color; l.intensity = intensity;
+    l.dir = dir;
+    l.color = color;
+    l.intensity = intensity;
     l.type = DIRECTIONAL_LIGHT;
     return l;
 }

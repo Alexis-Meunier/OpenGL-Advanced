@@ -15,7 +15,7 @@ uniform mat4 model;
 
 void main() {
   gl_Position = proj * view * model * vec4(position, 1.0);
-  vs_pos = gl_Position.xyz;
+  vs_pos = (model * vec4(position, 1.0)).xyz;
 
   vs_color = object_color;
   vs_normal = normalSmooth;

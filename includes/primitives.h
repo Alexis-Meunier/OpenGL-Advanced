@@ -3,13 +3,8 @@
 #include <cmath>
 #include <vector>
 
-// Triangle-list meshes (CCW winding, outward normals) in the same flat
-// "x y z x y z ..." layout your Object class expects. Both have size 1
-// (cube side = 1, sphere diameter = 1) and are centred on the origin.
-
 inline void make_cube_mesh(std::vector<float>& verts, std::vector<float>& normals)
 {
-    // normal, tangent u, tangent v  (u x v == normal, so the quad is CCW seen from outside)
     static const float F[6][9] = {
         {  1, 0, 0,   0, 0,-1,   0, 1, 0 },
         { -1, 0, 0,   0, 0, 1,   0, 1, 0 },
@@ -46,9 +41,19 @@ inline void make_sphere_mesh(std::vector<float>& verts, std::vector<float>& norm
     for (int i = 0; i < stacks; i++)
         for (int j = 0; j < slices; j++)
         {
-            float A[3], B[3], C[3], D[3];
-            P(i, j, A); P(i + 1, j, B); P(i + 1, j + 1, C); P(i, j + 1, D);
-            push(A); push(C); push(B);
-            push(A); push(D); push(C);
+            float A[3];
+            float B[3];
+            float C[3];
+            float D[3];
+            P(i, j, A);
+            P(i + 1, j, B);
+            P(i + 1, j + 1, C);
+            P(i, j + 1, D);
+            push(A);
+            push(C);
+            push(B);
+            push(A);
+            push(D);
+            push(C);
         }
 }

@@ -8,10 +8,10 @@
 class Bloom
 {
 public:
-    float threshold = 1.0f; // brightness where glow starts
-    float knee = 0.5f; // softness of the threshold
-    float radius = 1.0f; // upsample filter radius (in texels)
-    float strength = 0.15f; // how much bloom is added to the scene
+    float threshold = 1.0f;
+    float knee = 0.5f;
+    float radius = 1.0f;
+    float strength = 0.15f;
 
     void resize(int width, int height);
 

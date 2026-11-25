@@ -36,10 +36,6 @@ void Object::render(const matrix4& view, const matrix4& proj, const vec3& cam_po
     _material->set_mat4("proj", proj);
     _material->set_vec3("cameraPos", cam_pos);
     _material->set_float("anim_time", anim_time);
-    if (_material->is_compute())
-    {
-        _material->set_float("t_explode", 13.4f);
-    }
     if (_material->is_tesselation())
     {
         _material->set_float("nb_divisions", nb_div);

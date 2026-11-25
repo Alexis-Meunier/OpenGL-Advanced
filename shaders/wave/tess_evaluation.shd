@@ -12,26 +12,25 @@ out vec2 fr_uv;
 
 uniform vec3 cameraPos;
 
-uniform sampler2D wave_tex; // r = height, g/b = slope (written by wave/compute.shd)
+uniform sampler2D wave_tex;
 uniform float plane_size;
 
 void main() {
     vec4 p1 = mix(gl_in[0].gl_Position, gl_in[1].gl_Position, gl_TessCoord.x);
     vec4 p2 = mix(gl_in[3].gl_Position, gl_in[2].gl_Position, gl_TessCoord.x);
-    vec4 p  = mix(p1, p2, gl_TessCoord.y);
+    vec4 p = mix(p1, p2, gl_TessCoord.y);
 
     vec3 c1 = mix(tsc_color[0], tsc_color[1], gl_TessCoord.x);
     vec3 c2 = mix(tsc_color[3], tsc_color[2], gl_TessCoord.x);
 
     vec2 uv = p.xz / plane_size + 0.5;
 
-    // textureLod: implicit derivatives don't exist in this stage
     vec4 w = textureLod(wave_tex, uv, 0.0);
     float fade = clamp(1.0 - distance(cameraPos, p.xyz) * 0.004, 0.0, 1.0);
     p.y += w.r * fade;
 
     fr_color = mix(c1, c2, gl_TessCoord.y);
-    fr_pos   = p.xyz;
-    fr_uv    = uv;
+    fr_pos = p.xyz;
+    fr_uv = uv;
     gl_Position = proj * view * p;
 }

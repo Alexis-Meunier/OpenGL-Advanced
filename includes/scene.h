@@ -40,6 +40,7 @@ class Scene {
         void set_time_of_day(float hours);
         void advance_time(float dh);
         void add_bunny(const vec3& translation = vec3(0.0), const vec3& scale = vec3(0.0));
+        void add_exploding_bunny(const vec3& translation, const vec3& scale);
         void add_tesselation_wave(const vec3& translation = vec3(0.0), const float& scale = 1.0f);
         void add_skybox();
         void add_terrain(const vec3& translation, const float& scale);
@@ -49,8 +50,10 @@ class Scene {
                             const vec3& color, float glow, float light_intensity);
         float terrain_height(float x, float z);
 
-    private:
+    private: // TODO: Cleanup because :skull:
         void wave_movement(float dt);
+        void bunny_movement(float dt);
+        void create_layer(int cells, int grid, float tile, float in_start, float in_end, float out_start, float out_end, float width_scale, float height_scale);
 
         static constexpr int N_WAVES = 8;
 
@@ -88,6 +91,15 @@ class Scene {
         float _wave_size = 50.f;
         GLuint _wave_tex = 0;
         std::shared_ptr<Material> _wave_compute;
+        float _water_y = -1e30f;
+        GLuint _ripple_tex[2] = {};
+        GLuint _splash_tex = 0;
+        std::shared_ptr<Material> _ripple_compute;
+
+        size_t _bunny_idx = 0;
+        float _bunny_t0 = 0.f;
+        GLuint _bunny_orig = 0;
+        std::shared_ptr<Material> _bunny_mat, _bunny_explode_mat, _bunny_compute;
         std::vector<std::shared_ptr<Material>> _grass_mats;
 };
 
